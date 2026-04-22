@@ -117,7 +117,7 @@ export default function EventDetailPage() {
                   <AlertTri size={11} /> Heads up
                 </div>
                 Each sheet takes 10–30s. Generating {idleCount} sheets will take
-                roughly {idleCount * 20}s and count against today's quota.
+                roughly {idleCount * 20}s and count against today&apos;s quota.
               </div>
             </div>
           </div>
