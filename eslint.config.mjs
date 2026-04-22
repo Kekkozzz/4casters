@@ -12,6 +12,13 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Prototype is a static HTML+CDN React reference, not production code.
+    "prototype/**",
+    // Drizzle-generated migration snapshots.
+    "db/migrations/**",
+    // Playwright artifacts.
+    "playwright-report/**",
+    "test-results/**",
   ]),
 ]);
 
