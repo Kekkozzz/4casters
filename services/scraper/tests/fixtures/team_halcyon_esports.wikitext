@@ -1,0 +1,28 @@
+{{Infobox team
+|name=Halcyon Esports
+|shortname=HCN
+|image=halcyon-logo.png
+|location={{Flag/eu}} Europe
+|region=Europe
+|founded=2023-06-15
+|disbanded=
+|ceo=Dana Vitek
+|coach=[[Kovacic (player)|Kovacic]]
+|website=https://halcyon.gg
+|twitter=Halcyon
+}}
+
+'''Halcyon Esports''' is a European Rocket League organization...
+
+==Current Roster==
+{{squad2
+|player1={{SquadPlayer|id=itachi|name=Noah Grünefeld|flag=de|role=Captain|join=2024-08-01|leave=}}
+|player2={{SquadPlayer|id=Seikoo|name=Maello Ernst|flag=fr|role=Player|join=2024-08-01|leave=}}
+|player3={{SquadPlayer|id=Vatira|name=Alexandre Carré|flag=fr|role=Player|join=2024-11-15|leave=}}
+|player4={{SquadPlayer|id=drop|name=Axel Van Remoortere|flag=be|role=Substitute|join=2025-02-01|leave=}}
+}}
+
+==Former Players==
+{{squad2
+|player1={{SquadPlayer|id=Atomic|name=Otto Schmidt|flag=se|role=Player|join=2023-09-01|leave=2024-07-31}}
+}}

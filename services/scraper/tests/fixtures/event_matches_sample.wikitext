@@ -1,0 +1,22 @@
+==Quarterfinals==
+{{MatchList|id=m1|title=Quarterfinal 1|bestof=5|date=2026-03-20 18:00 CET
+|match1={{Match
+|opponent1={{TeamOpponent|Halcyon Esports|score=3}}
+|opponent2={{TeamOpponent|Verdant GG|score=2}}
+|date=2026-03-20 18:00 CET
+}}
+|match2={{Match
+|opponent1={{TeamOpponent|Northbyte|score=}}
+|opponent2={{TeamOpponent|Mirage|score=}}
+|date=2026-03-20 20:30 CET
+}}
+}}
+
+==Semifinals==
+{{MatchList|id=m2|title=Semifinal 1|bestof=7|date=2026-03-21 19:00 CET
+|match1={{Match
+|opponent1={{TeamOpponent|Halcyon Esports|score=}}
+|opponent2={{TeamOpponent|Northbyte|score=}}
+|date=2026-03-21 19:00 CET
+}}
+}}

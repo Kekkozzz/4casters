@@ -1,0 +1,19 @@
+{{Infobox player
+|id=itachi
+|name=Noah Grünefeld
+|romanized_name=
+|image=itachi-2026.png
+|birth_date=2002-04-12
+|country=de
+|nationality=Germany
+|region=Europe
+|role=Captain
+|years_active=2019 –
+|team=Halcyon Esports
+|team_link=Halcyon_Esports
+|twitter=itachiRL
+|twitch=itachi
+|liquipedia_tier=1
+}}
+
+'''Noah "itachi" Grünefeld''' is a German professional Rocket League player...
