@@ -1,5 +1,6 @@
 import {
   date,
+  doublePrecision,
   index,
   integer,
   pgTable,
@@ -121,5 +122,83 @@ export const matches = pgTable(
   (t) => [
     index("matches_event_idx").on(t.eventId),
     index("matches_scheduled_idx").on(t.scheduledAt),
+  ],
+);
+
+/* ──────────────────────────────────────────────────────────────
+   Ballchasing stats (Sub-plan #4).
+
+   event_groups maps each liquipedia event -> one ballchasing group
+   id. Discovery is fuzzy (name+date), so linkedBy records whether
+   we auto-matched or the user pasted the id manually.
+
+   Stats rows carry source_group_id so every cell in the UI can
+   render a clickable backing link to the ballchasing group. Null
+   numeric fields render as "no data available".
+   ────────────────────────────────────────────────────────────── */
+
+export const eventGroups = pgTable("event_groups", {
+  eventId: text("event_id")
+    .primaryKey()
+    .references(() => events.id, { onDelete: "cascade" }),
+  ballchasingGroupId: text("ballchasing_group_id").notNull(),
+  linkedBy: text("linked_by"), // "auto" | "manual"
+  confidence: doublePrecision("confidence"), // 0..1 for auto, null for manual
+  linkedAt: timestamp("linked_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const eventPlayerStats = pgTable(
+  "event_player_stats",
+  {
+    eventId: text("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    playerId: text("player_id")
+      .notNull()
+      .references(() => players.id, { onDelete: "cascade" }),
+    gamesPlayed: integer("games_played").notNull(),
+    goalsPerGame: doublePrecision("goals_per_game"),
+    assistsPerGame: doublePrecision("assists_per_game"),
+    savesPerGame: doublePrecision("saves_per_game"),
+    shotsPerGame: doublePrecision("shots_per_game"),
+    shootingPct: doublePrecision("shooting_pct"),
+    savePct: doublePrecision("save_pct"),
+    demosPerGame: doublePrecision("demos_per_game"),
+    boostPerMin: doublePrecision("boost_per_min"),
+    sourceGroupId: text("source_group_id").notNull(),
+    capturedAt: timestamp("captured_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.eventId, t.playerId] }),
+    index("event_player_stats_player_idx").on(t.playerId),
+  ],
+);
+
+export const eventTeamStats = pgTable(
+  "event_team_stats",
+  {
+    eventId: text("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    teamId: text("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    gamesPlayed: integer("games_played").notNull(),
+    wins: integer("wins").notNull(),
+    losses: integer("losses").notNull(),
+    goalsFor: integer("goals_for"),
+    goalsAgainst: integer("goals_against"),
+    sourceGroupId: text("source_group_id").notNull(),
+    capturedAt: timestamp("captured_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.eventId, t.teamId] }),
+    index("event_team_stats_team_idx").on(t.teamId),
   ],
 );

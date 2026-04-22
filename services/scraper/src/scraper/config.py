@@ -29,6 +29,8 @@ class Settings(BaseSettings):
         "4casters/0.3 (https://github.com/Kekkozzz/4casters; contact@4casters.app)"
     )
     liquipedia_min_interval_seconds: float = 2.0
+    ballchasing_api_key: str = ""
+    ballchasing_min_interval_seconds: float = 0.5  # 2 req/s free tier
 
 
 @lru_cache
