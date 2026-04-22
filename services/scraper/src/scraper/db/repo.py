@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
+from scraper.ballchasing.parsers import EventPlayerStat, EventTeamStat
 from scraper.liquipedia.parsers.event import ParsedEvent
 from scraper.liquipedia.parsers.match import ParsedMatch
 from scraper.liquipedia.parsers.player import ParsedPlayer
@@ -20,6 +21,7 @@ class Executor(Protocol):
     """Minimal shape we need from an asyncpg connection or pool."""
 
     async def execute(self, query: str, *args: Any) -> Any: ...
+    async def fetchrow(self, query: str, *args: Any) -> Any: ...
 
 
 _UPSERT_TEAM = """
@@ -149,3 +151,102 @@ class LiquipediaRepo:
             entry.source_url,
         )
         return 1
+
+    async def upsert_event_group(
+        self,
+        *,
+        event_id: str,
+        group_id: str,
+        linked_by: str,
+        confidence: float | None,
+    ) -> None:
+        await self._conn.execute(
+            _UPSERT_EVENT_GROUP, event_id, group_id, linked_by, confidence
+        )
+
+    async def get_event_group(self, event_id: str) -> str | None:
+        row = await self._conn.fetchrow(
+            "SELECT ballchasing_group_id FROM event_groups WHERE event_id = $1",
+            event_id,
+        )
+        if row is None:
+            return None
+        value = row["ballchasing_group_id"]
+        return value if isinstance(value, str) else None
+
+    async def upsert_event_player_stat(self, stat: EventPlayerStat) -> None:
+        await self._conn.execute(
+            _UPSERT_EVENT_PLAYER_STAT,
+            stat.event_id,
+            stat.player_id,
+            stat.games_played,
+            stat.goals_per_game,
+            stat.assists_per_game,
+            stat.saves_per_game,
+            stat.shots_per_game,
+            stat.shooting_pct,
+            stat.save_pct,
+            stat.demos_per_game,
+            stat.boost_per_min,
+            stat.source_group_id,
+        )
+
+    async def upsert_event_team_stat(self, stat: EventTeamStat) -> None:
+        await self._conn.execute(
+            _UPSERT_EVENT_TEAM_STAT,
+            stat.event_id,
+            stat.team_id,
+            stat.games_played,
+            stat.wins,
+            stat.losses,
+            stat.goals_for,
+            stat.goals_against,
+            stat.source_group_id,
+        )
+
+
+_UPSERT_EVENT_GROUP = """
+INSERT INTO event_groups (event_id, ballchasing_group_id, linked_by, confidence, linked_at)
+VALUES ($1, $2, $3, $4, NOW())
+ON CONFLICT (event_id) DO UPDATE SET
+  ballchasing_group_id = EXCLUDED.ballchasing_group_id,
+  linked_by = EXCLUDED.linked_by,
+  confidence = EXCLUDED.confidence,
+  linked_at = NOW()
+"""
+
+_UPSERT_EVENT_PLAYER_STAT = """
+INSERT INTO event_player_stats (
+  event_id, player_id, games_played,
+  goals_per_game, assists_per_game, saves_per_game, shots_per_game,
+  shooting_pct, save_pct, demos_per_game, boost_per_min,
+  source_group_id, captured_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
+ON CONFLICT (event_id, player_id) DO UPDATE SET
+  games_played = EXCLUDED.games_played,
+  goals_per_game = EXCLUDED.goals_per_game,
+  assists_per_game = EXCLUDED.assists_per_game,
+  saves_per_game = EXCLUDED.saves_per_game,
+  shots_per_game = EXCLUDED.shots_per_game,
+  shooting_pct = EXCLUDED.shooting_pct,
+  save_pct = EXCLUDED.save_pct,
+  demos_per_game = EXCLUDED.demos_per_game,
+  boost_per_min = EXCLUDED.boost_per_min,
+  source_group_id = EXCLUDED.source_group_id,
+  captured_at = NOW()
+"""
+
+_UPSERT_EVENT_TEAM_STAT = """
+INSERT INTO event_team_stats (
+  event_id, team_id, games_played, wins, losses,
+  goals_for, goals_against, source_group_id, captured_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+ON CONFLICT (event_id, team_id) DO UPDATE SET
+  games_played = EXCLUDED.games_played,
+  wins = EXCLUDED.wins,
+  losses = EXCLUDED.losses,
+  goals_for = EXCLUDED.goals_for,
+  goals_against = EXCLUDED.goals_against,
+  source_group_id = EXCLUDED.source_group_id,
+  captured_at = NOW()
+"""

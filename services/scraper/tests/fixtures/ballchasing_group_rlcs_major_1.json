@@ -1,0 +1,67 @@
+{
+  "id": "rlcs-2026-major-1-eu",
+  "name": "RLCS 2026 Major 1 EU",
+  "players": [
+    {
+      "platform": "steam",
+      "id": "7656119xxx1",
+      "name": "itachi",
+      "team": "Halcyon Esports",
+      "cumulative": {
+        "games": 12,
+        "wins": 8,
+        "losses": 4,
+        "core": {
+          "shots": 45, "goals": 12, "saves": 20, "assists": 8,
+          "shooting_percentage": 26.67, "save_percentage": 74.07,
+          "score": 4200, "mvp": 2
+        },
+        "boost": {"bpm": 450, "avg_amount": 52.3},
+        "demo": {"inflicted": 15, "taken": 8}
+      },
+      "game_average": {
+        "core": {
+          "shots": 3.75, "goals": 1.0, "saves": 1.67, "assists": 0.67,
+          "shooting_percentage": 26.67, "save_percentage": 74.07,
+          "score": 350, "mvp": 0.17
+        },
+        "boost": {"bpm": 450, "avg_amount": 52.3},
+        "demo": {"inflicted": 1.25, "taken": 0.67}
+      }
+    },
+    {
+      "platform": "steam",
+      "id": "7656119xxx2",
+      "name": "Vatira",
+      "team": "Halcyon Esports",
+      "cumulative": {
+        "games": 12, "wins": 8, "losses": 4,
+        "core": {"shots": 38, "goals": 9, "saves": 22, "assists": 10,
+                  "shooting_percentage": 23.68, "save_percentage": 75.86,
+                  "score": 3800, "mvp": 1},
+        "boost": {"bpm": 420, "avg_amount": 48.1},
+        "demo": {"inflicted": 9, "taken": 11}
+      },
+      "game_average": {
+        "core": {"shots": 3.17, "goals": 0.75, "saves": 1.83, "assists": 0.83,
+                  "shooting_percentage": 23.68, "save_percentage": 75.86,
+                  "score": 316, "mvp": 0.08},
+        "boost": {"bpm": 420, "avg_amount": 48.1},
+        "demo": {"inflicted": 0.75, "taken": 0.92}
+      }
+    }
+  ],
+  "teams": [
+    {
+      "name": "Halcyon Esports",
+      "players": ["itachi", "Vatira", "Seikoo"],
+      "cumulative": {
+        "games": 12, "wins": 8, "losses": 4,
+        "core": {"shots": 140, "goals": 34, "shots_against": 120, "goals_against": 28}
+      },
+      "game_average": {
+        "core": {"shots": 11.67, "goals": 2.83, "shots_against": 10.0, "goals_against": 2.33}
+      }
+    }
+  ]
+}

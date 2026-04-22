@@ -15,6 +15,13 @@
       "when": 1776865228708,
       "tag": "0001_productive_james_howlett",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776867529024,
+      "tag": "0002_stormy_marvex",
+      "breakpoints": true
     }
   ]
 }
