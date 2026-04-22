@@ -1,0 +1,27 @@
+{{Infobox league
+|name=RLCS 2026 Major 1
+|shortname=Major 1
+|tickername=RLCS 26 M1
+|series=RLCS 2026
+|image=rlcs-2026-major-1.png
+|organizer=Psyonix
+|sponsor=BMW, Secretlab
+|type=Offline
+|location=Copenhagen, Denmark
+|country={{Flag/dk}}
+|venue=Royal Arena
+|format=Playoffs
+|prizepool=1,000,000
+|prizepoolusd=1000000
+|start_date=2026-03-14
+|end_date=2026-03-22
+|liquipediatier=1
+|liquipediatiertype=Major
+|game=Rocket League
+|map1=DFH Stadium
+|teams=16
+|previous=[[RLCS 2025/Fall/Major|2025 Fall Major]]
+|next=[[RLCS 2026/Major 2|Major 2]]
+}}
+
+The '''RLCS 2026 Major 1''' is the first international LAN of the season...
