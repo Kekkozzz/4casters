@@ -2,15 +2,42 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Stand up the monorepo skeleton, Next.js app shell, design tokens, Supabase wiring, DB package, and a smoke-tested `/login` page, so every subsequent sub-plan has a working substrate to build into.
+**Goal:** Stand up a Next.js single-package app at repo root, with design tokens from the prototype applied via Tailwind v4, Supabase client wiring, a local Drizzle setup, and a smoke-tested `/login` page, so every subsequent sub-plan has a working substrate to build into.
 
-**Architecture:** pnpm workspace monorepo with `apps/web` (Next.js 15 App Router + TS + Tailwind), `packages/db` (Drizzle + Postgres), `packages/shared-types` (TS types derived from prototype), and `prototype/` kept as canonical design reference. Scraper service deferred to Sub-plan #3. Auth wired later (Sub-plan #7); this sub-plan installs Supabase client + env scaffolding only.
+**Architecture:** Single-package Next.js 16 App Router at repo root (no pnpm workspace). Shared types and DB schema live as internal folders (`types/`, `db/`) not as pnpm packages — they can be promoted to workspace packages later if a second TS consumer materializes. Python scraper stays in `services/scraper/` (different language ecosystem, always separate). Prototype kept in `prototype/` as canonical design reference.
 
-**Tech Stack:** pnpm, Node 20+, Next.js 15, TypeScript (strict), Tailwind CSS, lucide-react, Drizzle ORM, Postgres (Supabase), Vitest + Testing Library, Playwright.
+**Tech Stack:** npm, Node 24 (engines >=20), Next.js 16.2.4, React 19.2.4, TypeScript strict, Tailwind CSS v4, lucide-react, Drizzle ORM, Postgres (Supabase), Vitest + Testing Library, Playwright.
 
 **Repo:** https://github.com/Kekkozzz/4casters
 
 **Reference design spec:** `C:\Users\Windows\.claude\plans\ciao-in-questi-giorni-snazzy-pine.md` (Sezione 7, 14, 17, Appendix B).
+
+---
+
+## REVISION 2026-04-22 (post-Task-3)
+
+Tasks 1–3 superseded by manual scaffolding. Current git state:
+
+| Commit | Summary |
+|---|---|
+| `682bfbc` | chore: initial monorepo layout, move prototype and research under their homes |
+| `92fe666` | chore(repo): pnpm workspace, shared TS base config *(reverted by next commit)* |
+| `75ca96f` | chore: scaffold Next.js 16 + Tailwind v4 at repo root (single-package) |
+
+**Deviations from the original plan:**
+
+1. **Single-package instead of monorepo.** `apps/web/` merged into root. `packages/db/` → `db/` folder. `packages/shared-types/` → `types/` folder. No `pnpm-workspace.yaml`.
+2. **npm instead of pnpm.** `package-lock.json` is the lockfile. All commands use `npm` / `npx`.
+3. **Next.js 16.2.4** (not 15). Breaking changes from training data — see `AGENTS.md` / `node_modules/next/dist/docs/` before writing Next.js code.
+4. **Tailwind v4** (not v3). No `tailwind.config.ts` — design tokens live in `app/globals.css` via `@theme` directive. `@import "tailwindcss";` replaces `@tailwind base/components/utilities`.
+5. **React 19** (not 18).
+6. **Agent rules files present:** `AGENTS.md` and `CLAUDE.md` at root flag that Next.js 16 may differ from training data.
+
+**What's done:** git init, prototype moved, research moved, Next.js scaffolded with default starter, Tailwind v4 wired, ESLint 9 flat config, npm lockfile committed.
+
+**What's next:** Task 4 onward, revised for the new stack. Tasks 4–12 below are updated where paths/commands need adapting; task intent is unchanged.
+
+---
 
 ---
 
