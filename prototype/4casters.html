@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440" />
+<title>4casters</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          bg:      '#0B0D10',
+          surf1:   '#14181D',
+          surf2:   '#1B2028',
+          surf3:   '#232932',
+          line:    '#242A33',
+          line2:   '#2E3542',
+          fg:      '#E8EBEE',
+          mute:    '#8C929A',
+          mute2:   '#5E6470',
+          accent:  '#4F8DFF',
+          accentD: '#3D75DB',
+          ok:      '#2EB872',
+          warn:    '#D9A441',
+          bad:     '#E0524A',
+        },
+        fontFamily: {
+          sans:  ['Inter', 'ui-sans-serif', 'system-ui'],
+          mono:  ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        },
+        borderRadius: { btn: '6px', card: '10px' },
+        letterSpacing: { tightish: '-0.01em', tighter2: '-0.02em' },
+      }
+    }
+  }
+</script>
+<style>
+  html, body { background: #0B0D10; color: #E8EBEE; }
+  body { font-family: Inter, ui-sans-serif, system-ui; font-feature-settings: "ss01","cv11"; }
+  .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: #232932; border-radius: 6px; }
+  ::-webkit-scrollbar-thumb:hover { background: #2E3542; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  /* selection */
+  ::selection { background: rgba(79,141,255,0.28); color: #fff; }
+  /* subtle focus */
+  :focus-visible { outline: 2px solid #4F8DFF; outline-offset: 2px; border-radius: 4px; }
+  /* base transitions */
+  .t150 { transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out, transform 150ms ease-out, opacity 150ms ease-out; }
+  /* fine grid for event logo placeholders */
+  .hatch {
+    background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.06) 0 1px, transparent 1px 6px);
+  }
+  .hatch-dense {
+    background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.10) 0 1px, transparent 1px 4px);
+  }
+  /* soft divider */
+  .hr { border-top: 1px solid #242A33; }
+
+  /* reveal */
+  @keyframes fadein { from { opacity: 0; transform: translateY(2px);} to { opacity: 1; transform: none;} }
+  .fadein { animation: fadein 180ms ease-out both; }
+
+  /* indeterminate bar */
+  @keyframes barmove { 0% { transform: translateX(-40%);} 100% { transform: translateX(140%);} }
+  .bar-indet::after {
+    content: ""; position: absolute; inset: 0; width: 40%;
+    background: linear-gradient(90deg, transparent, #4F8DFF, transparent);
+    animation: barmove 1.4s linear infinite;
+  }
+
+  /* quote glyph */
+  .qmark { font-family: Georgia, serif; line-height: 0.8; }
+
+  /* details/summary chevron reset */
+  details > summary { list-style: none; cursor: pointer; }
+  details > summary::-webkit-details-marker { display: none; }
+
+  /* subtle row hover */
+  .row-hover:hover { background: #121519; }
+
+  /* chip */
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 4px; font-size: 11px; line-height: 18px; border: 1px solid #2E3542; color: #B9BEC7; background: #141821; }
+  .chip-mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: 0; }
+
+  /* source chip underline on hover */
+  .src:hover { color: #9AB4E8; }
+  .src:hover u { text-decoration-color: #9AB4E8; }
+
+  /* Tooltip */
+  .tip { position: relative; }
+  .tip:hover > .tip-body { opacity: 1; transform: translateY(0); pointer-events: auto; }
+  .tip-body { position: absolute; opacity: 0; pointer-events: none; transition: all 150ms ease-out; transform: translateY(2px); }
+</style>
+</head>
+<body class="min-h-screen">
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="src/icons.jsx"></script>
+<script type="text/babel" src="src/primitives.jsx"></script>
+<script type="text/babel" src="src/data.jsx"></script>
+<script type="text/babel" src="src/layout.jsx"></script>
+<script type="text/babel" src="src/login.jsx"></script>
+<script type="text/babel" src="src/events.jsx"></script>
+<script type="text/babel" src="src/event_detail.jsx"></script>
+<script type="text/babel" src="src/sheet.jsx"></script>
+<script type="text/babel" src="src/my_sheets.jsx"></script>
+<script type="text/babel" src="src/app.jsx"></script>
+</body>
+</html>
