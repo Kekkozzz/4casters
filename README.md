@@ -3,23 +3,29 @@
 AI caster prep tool for Rocket League — match sheets with verifiable sources.
 
 ## Status
-Early scaffolding. See `docs/superpowers/plans/` for the implementation roadmap.
+
+Early scaffolding. See [`docs/superpowers/plans/`](./docs/superpowers/plans/) for the implementation roadmap and [`docs/research/`](./docs/research/) for market + customer discovery.
+
+## Stack
+
+- Next.js 16 (App Router) + React 19 + TypeScript
+- Tailwind CSS v4
+- ESLint 9 (flat config)
+- npm (single-package at root)
 
 ## Quickstart
 
 ```bash
-pnpm install
-pnpm --filter web dev
+npm install
+npm run dev
 ```
 
-Open http://localhost:3000/login.
+Open http://localhost:3000.
 
-## Monorepo layout
+## Layout
 
-- `apps/web` — Next.js 15 app (UI + synthesis API routes)
-- `packages/db` — Drizzle schema + migrations
-- `packages/shared-types` — TS types shared across packages
-- `services/scraper` — Python FastAPI scraper (Sub-plan #3+)
-- `prototype/` — Claude design prototype (canonical visual reference)
-- `docs/research/` — market + customer discovery
+- `app/` — Next.js App Router pages + API routes
+- `prototype/` — Claude design prototype (canonical visual reference, not production)
+- `docs/research/` — market + customer discovery reports
 - `docs/superpowers/plans/` — executable implementation plans
+- `services/scraper/` — Python FastAPI scraper (added in Sub-plan #3)
