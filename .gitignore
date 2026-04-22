@@ -16,6 +16,16 @@
 /test-results
 /playwright/.cache
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
 # next.js
 /.next/
 /out/
