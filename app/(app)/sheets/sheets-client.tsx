@@ -111,7 +111,7 @@ export function SheetsClient({ sheets }: { sheets: SheetListRow[] }) {
             {filtered.map((r, i) => (
               <Link
                 key={r.matchId}
-                href={`/matches/${encodeURIComponent(r.matchId)}`}
+                href={`/matches/${r.matchId}`}
                 className={`grid grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_180px_120px_40px] h-12 px-4 items-center t150 row-hover ${
                   i < filtered.length - 1 ? "border-b border-line" : ""
                 }`}

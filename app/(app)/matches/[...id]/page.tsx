@@ -20,10 +20,12 @@ export const dynamic = "force-dynamic";
 export default async function SheetPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string[] }>;
 }) {
   const { id } = await params;
-  const matchId = decodeURIComponent(id);
+  // Catch-all segment: match ids include the event slug (which contains
+  // `/`), e.g. `RLCS_2026/Boston_Major:SF:A-vs-B`. Rejoin here.
+  const matchId = id.map(decodeURIComponent).join("/");
 
   const [header, persisted] = await Promise.all([
     getMatchHeader(matchId),
@@ -48,7 +50,7 @@ export default async function SheetPage({
       <header className="sticky top-0 z-30 border-b border-line bg-bg/95 backdrop-blur-sm">
         <div className="px-8 h-[68px] flex items-center gap-6">
           <Link
-            href={`/events/${encodeURIComponent(s.eventSlug)}`}
+            href={`/events/${s.eventSlug}`}
             aria-label="Back"
             className="w-8 h-8 rounded-btn border border-line2 bg-surf1 hover:bg-surf2 t150 flex items-center justify-center"
           >
@@ -126,7 +128,7 @@ function NotGeneratedYet({
       <header className="sticky top-0 z-30 border-b border-line bg-bg/95 backdrop-blur-sm">
         <div className="px-8 h-[68px] flex items-center gap-4">
           <Link
-            href={`/events/${encodeURIComponent(header.eventSlug)}`}
+            href={`/events/${header.eventSlug}`}
             aria-label="Back"
             className="w-8 h-8 rounded-btn border border-line2 bg-surf1 hover:bg-surf2 t150 flex items-center justify-center"
           >

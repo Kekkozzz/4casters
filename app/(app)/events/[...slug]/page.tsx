@@ -12,10 +12,13 @@ export const dynamic = "force-dynamic";
 export default async function EventDetailPage({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ slug: string[] }>;
 }) {
   const { slug } = await params;
-  const decoded = decodeURIComponent(slug);
+  // Catch-all segment: Liquipedia slugs contain `/` (e.g.
+  // "RLCS_2026/Boston_Major"), so the dynamic folder is `[...slug]` and
+  // we rejoin the parts here into the DB lookup key.
+  const decoded = slug.map(decodeURIComponent).join("/");
   const [event, matches] = await Promise.all([
     getEvent(decoded),
     listMatchesForEvent(decoded),

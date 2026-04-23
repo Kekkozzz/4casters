@@ -10,7 +10,17 @@ import { createClient } from "@/utils/supabase/client";
 
 const DEV_BYPASS = process.env.NEXT_PUBLIC_DEV_NO_AUTH === "true";
 
+// useSearchParams() needs to sit inside a Suspense boundary so Next.js
+// can static-render the page shell. Split the body out and wrap it.
 export default function LoginPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <LoginBody />
+    </React.Suspense>
+  );
+}
+
+function LoginBody() {
   const router = useRouter();
   const search = useSearchParams();
   const redirectTo = search.get("redirect_to") ?? "/events";

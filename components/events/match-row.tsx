@@ -9,7 +9,7 @@ export function MatchRow({ m, last }: { m: MatchListRow; last: boolean }) {
 
   return (
     <Link
-      href={`/matches/${encodeURIComponent(m.id)}`}
+      href={`/matches/${m.id}`}
       className={`grid grid-cols-[140px_minmax(0,1fr)_100px_80px_180px] h-[68px] px-4 items-center row-hover t150 ${
         last ? "" : "border-b border-line"
       }`}
