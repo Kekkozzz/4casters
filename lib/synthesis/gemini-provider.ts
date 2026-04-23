@@ -6,15 +6,14 @@ import { SheetOutputSchema } from "./types";
 import { SYSTEM_PROMPT, buildUserPrompt } from "./prompt";
 
 /**
- * Default model. `gemini-2.5-flash` is the headline model but gets
- * "high demand" rejections (3 retries still fail) during peak hours,
- * so we default to the less-loaded `gemini-2.0-flash`. Override at
- * runtime via GEMINI_SYNTHESIS_MODEL, e.g.:
- *   "gemini-2.5-flash" (when capacity frees up)
- *   "gemini-3-flash-preview" (once live via @ai-sdk/google)
- *   "gemini-1.5-flash" (oldest stable, highest headroom)
+ * Default model. `gemini-3.1-flash-lite-preview` is the current choice:
+ * cheap, low-latency, and unlike 2.5-flash it isn't capacity-capped by
+ * "high demand" rejections during peak hours. Override at runtime via
+ * GEMINI_SYNTHESIS_MODEL when a newer model ships.
+ * (gemini-2.0-flash was deprecated; don't fall back to it.)
  */
-const DEFAULT_MODEL = process.env.GEMINI_SYNTHESIS_MODEL ?? "gemini-2.0-flash";
+const DEFAULT_MODEL =
+  process.env.GEMINI_SYNTHESIS_MODEL ?? "gemini-3.1-flash-lite-preview";
 
 export class GeminiFlashProvider implements SynthesisProvider {
   readonly name = "gemini-flash";
