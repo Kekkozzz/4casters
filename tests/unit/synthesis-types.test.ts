@@ -110,8 +110,8 @@ describe("SheetOutputSchema", () => {
     expect(() => SheetOutputSchema.parse(minimalSheet)).not.toThrow();
   });
 
-  it("rejects fewer than 2 narrative_hooks", () => {
-    const bad = { ...minimalSheet, narrative_hooks: [minimalSheet.narrative_hooks[0]] };
+  it("rejects zero narrative_hooks", () => {
+    const bad = { ...minimalSheet, narrative_hooks: [] };
     expect(() => SheetOutputSchema.parse(bad)).toThrow();
   });
 

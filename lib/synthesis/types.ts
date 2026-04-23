@@ -120,8 +120,13 @@ export const PlayerNotablesSchema = z.object({
 });
 
 export const SheetOutputSchema = z.object({
-  narrative_hooks: z.array(NarrativeHookSchema).min(2).max(4),
-  talking_points: z.array(TalkingPointSchema).min(4).max(8),
+  // Min floors relaxed from the original spec — sparse packets (no H2H,
+  // few stats, few quotes) make the model legitimately unable to hit
+  // 2+ hooks / 4+ talking points without fabricating, which the
+  // validators would then strip anyway. Better to accept a smaller
+  // but truthful sheet than reject the whole generation.
+  narrative_hooks: z.array(NarrativeHookSchema).min(1).max(4),
+  talking_points: z.array(TalkingPointSchema).min(2).max(8),
   selected_quotes: z.array(SelectedQuoteSchema).max(3),
   player_notables: z.array(PlayerNotablesSchema).max(6),
 });
