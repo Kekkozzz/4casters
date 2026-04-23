@@ -14,9 +14,11 @@ from scraper.db.pool import pool_from_settings
 from scraper.db.repo import LiquipediaRepo
 from scraper.liquipedia.client import LiquipediaClient
 from scraper.pipeline import backfill_event
+from scraper.pipeline_embeddings import backfill_embeddings
 from scraper.pipeline_quotes import ingest_liquipedia_quotes
 from scraper.pipeline_stats import SupabaseEventLookup, refresh_event_stats
 from scraper.pipeline_youtube_quotes import ingest_youtube_quotes
+from scraper.quotes.embeddings import GeminiEmbedder
 from scraper.quotes.youtube import fetch_channel_feed
 from scraper.quotes.youtube_channels import DEFAULT_CHANNELS
 from scraper.quotes.youtube_transcripts import fetch_transcript
@@ -265,4 +267,52 @@ def quotes_youtube(
 ) -> None:
     """Ingest quotes from configured YouTube channels (RSS + transcripts)."""
     exit_code = asyncio.run(_run_quotes_youtube(max_videos))
+    raise typer.Exit(code=exit_code)
+
+
+async def _run_quotes_embed(max_rows: int | None) -> int:
+    settings = get_settings()
+    if not settings.gemini_api_key:
+        console.print(
+            "[red]error:[/] GEMINI_API_KEY is not set in .env "
+            "(get one at https://aistudio.google.com/app/apikey)"
+        )
+        return 2
+    async with pool_from_settings() as pool, GeminiEmbedder(
+        api_key=settings.gemini_api_key,
+        model=settings.gemini_embedding_model,
+        min_interval_seconds=settings.embedding_min_interval_seconds,
+    ) as embedder, pool.acquire() as conn:
+        repo = LiquipediaRepo(conn)
+        report = await backfill_embeddings(
+            repo=repo,
+            embedder=embedder,
+            batch_size=settings.embedding_batch_size,
+            max_rows=max_rows,
+        )
+
+    console.rule("[bold]Embedding backfill")
+    console.print(
+        f"batches={report.batches_processed}  "
+        f"embeddings_written={report.embeddings_written}"
+    )
+    if report.errors:
+        for err in report.errors[:10]:
+            console.print(f"[red]error:[/] {err}")
+        return 1
+    return 0
+
+
+@quotes_app.command("embed")
+def quotes_embed(
+    max_rows: Annotated[
+        int | None,
+        typer.Option(
+            "--max-rows",
+            help="Cap total rows embedded in this run (useful for smoke tests).",
+        ),
+    ] = None,
+) -> None:
+    """Backfill embeddings for quotes with NULL embedding column."""
+    exit_code = asyncio.run(_run_quotes_embed(max_rows))
     raise typer.Exit(code=exit_code)

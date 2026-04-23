@@ -23,6 +23,7 @@ class Executor(Protocol):
 
     async def execute(self, query: str, *args: Any) -> Any: ...
     async def fetchrow(self, query: str, *args: Any) -> Any: ...
+    async def fetch(self, query: str, *args: Any) -> Any: ...
 
 
 _UPSERT_TEAM = """
@@ -220,6 +221,28 @@ class LiquipediaRepo:
             quote.hash,
         )
         return 1 if row is not None else 0
+
+    async def fetch_quotes_missing_embedding(
+        self, limit: int
+    ) -> list[tuple[str, str]]:
+        """Return up to `limit` (id, text) tuples for quotes without embeddings."""
+        rows = await self._conn.fetch(
+            "SELECT id::text AS id, text FROM quotes "
+            "WHERE embedding IS NULL ORDER BY captured_at LIMIT $1",
+            limit,
+        )
+        return [(row["id"], row["text"]) for row in rows]
+
+    async def set_quote_embedding(
+        self, quote_id: str, embedding: list[float]
+    ) -> None:
+        # pgvector accepts the textual form '[0.1, 0.2, ...]' and casts via ::vector.
+        literal = "[" + ",".join(f"{v:.8f}" for v in embedding) + "]"
+        await self._conn.execute(
+            "UPDATE quotes SET embedding = $1::vector WHERE id = $2::uuid",
+            literal,
+            quote_id,
+        )
 
     async def count_quotes_for_speaker(self, speaker_id: str) -> int:
         row = await self._conn.fetchrow(

@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     liquipedia_min_interval_seconds: float = 2.0
     ballchasing_api_key: str = ""
     ballchasing_min_interval_seconds: float = 0.5  # 2 req/s free tier
+    gemini_api_key: str = ""
+    # text-embedding-004 -> 768 dimensions, matches our schema vector(768).
+    gemini_embedding_model: str = "text-embedding-004"
+    embedding_batch_size: int = 100
+    embedding_min_interval_seconds: float = 0.05
 
 
 @lru_cache
