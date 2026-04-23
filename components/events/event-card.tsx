@@ -2,9 +2,9 @@ import Link from "next/link";
 import { Card, Pill } from "@/components/ui/primitives";
 import { LogoTile } from "@/components/ui/logo-tile";
 import { Calendar, ChevRight } from "@/components/ui/icons";
-import type { MockEvent } from "@/lib/mock/events";
+import type { EventRow } from "@/lib/data/events";
 
-export function EventCard({ ev }: { ev: MockEvent }) {
+export function EventCard({ ev }: { ev: EventRow }) {
   return (
     <Link href={`/events/${ev.slug}`} className="text-left group block">
       <Card

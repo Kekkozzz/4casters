@@ -61,6 +61,10 @@ vi.mock("@/lib/synthesis/gemini-provider", () => {
   };
 });
 
+vi.mock("@/lib/data/sheets", () => ({
+  savePersistedSheet: vi.fn(async () => undefined),
+}));
+
 describe("POST /api/sheet/generate", () => {
   beforeEach(() => {
     process.env.GOOGLE_GENERATIVE_AI_API_KEY = "test-key";

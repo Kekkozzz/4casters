@@ -3,6 +3,7 @@ import { z } from "zod";
 import { generateSheetForMatch, SynthesisError } from "@/lib/synthesis/orchestrator";
 import { GeminiFlashProvider } from "@/lib/synthesis/gemini-provider";
 import { logSynthesisRun } from "@/lib/synthesis/eval-log";
+import { savePersistedSheet } from "@/lib/data/sheets";
 
 // Synthesis is 10–30s on average; budget 60s.
 export const maxDuration = 60;
@@ -50,9 +51,24 @@ export async function POST(req: Request) {
   try {
     const result = await generateSheetForMatch(parsed.data.match_id, provider);
     logSynthesisRun(result);
+    try {
+      await savePersistedSheet(result);
+    } catch (err) {
+      // Persistence failure is a soft error: we still return the sheet so the
+      // caller can display it, but log that the cache layer didn't commit.
+      console.error(
+        JSON.stringify({
+          ts: new Date().toISOString(),
+          kind: "synthesis.persist_failed",
+          match_id: result.matchId,
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
     return NextResponse.json({
       match_id: result.matchId,
       output: result.output,
+      packet: result.packet,
       violations: result.violations,
       retried: result.retried,
       provider: result.provider,

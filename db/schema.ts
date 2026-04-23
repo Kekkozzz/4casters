@@ -1,8 +1,10 @@
 import {
+  boolean,
   date,
   doublePrecision,
   index,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   text,
@@ -10,6 +12,11 @@ import {
   uuid,
   vector,
 } from "drizzle-orm/pg-core";
+import type {
+  MatchContextPacket,
+  SheetOutput,
+} from "@/lib/synthesis/types";
+import type { ValidationViolation } from "@/lib/synthesis/validator";
 
 /**
  * Placeholder table used during Sub-plan #1 to verify DB connectivity.
@@ -237,3 +244,29 @@ export const quotes = pgTable(
     index("quotes_source_type_idx").on(t.sourceType),
   ],
 );
+
+/* ──────────────────────────────────────────────────────────────
+   Generated sheets (Sub-plan #7).
+
+   One row per match; written by /api/sheet/generate after validation.
+   Both the raw packet and the model output are stored so the viewer
+   renders in one query without re-running the synthesis.
+   ────────────────────────────────────────────────────────────── */
+
+export const generatedSheets = pgTable("generated_sheets", {
+  matchId: text("match_id")
+    .primaryKey()
+    .references(() => matches.id, { onDelete: "cascade" }),
+  output: jsonb("output").$type<SheetOutput>().notNull(),
+  packet: jsonb("packet").$type<MatchContextPacket>().notNull(),
+  violations: jsonb("violations").$type<ValidationViolation[]>().notNull(),
+  retried: boolean("retried").notNull(),
+  provider: text("provider").notNull(),
+  model: text("model").notNull(),
+  tokensInput: integer("tokens_input").notNull(),
+  tokensOutput: integer("tokens_output").notNull(),
+  latencyMs: integer("latency_ms").notNull(),
+  generatedAt: timestamp("generated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
