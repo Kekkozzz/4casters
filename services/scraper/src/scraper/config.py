@@ -5,6 +5,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Repo root is 2 levels up from services/scraper/.
@@ -31,7 +32,13 @@ class Settings(BaseSettings):
     liquipedia_min_interval_seconds: float = 2.0
     ballchasing_api_key: str = ""
     ballchasing_min_interval_seconds: float = 0.5  # 2 req/s free tier
-    gemini_api_key: str = ""
+    # Accept either GEMINI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY —
+    # same AI Studio key, different convention across Python scraper
+    # and the Next.js synthesis layer (@ai-sdk/google uses the latter).
+    gemini_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("GEMINI_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY"),
+    )
     # text-embedding-004 -> 768 dimensions, matches our schema vector(768).
     gemini_embedding_model: str = "text-embedding-004"
     embedding_batch_size: int = 100

@@ -76,8 +76,14 @@ async def find_group_for_event(
     event: ParsedEvent, *, client: _Searcher
 ) -> GroupMatch | None:
     end_date = event.end_date or event.start_date
-    created_after = (event.start_date - timedelta(days=MARGIN_DAYS)).isoformat()
-    created_before = (end_date + timedelta(days=MARGIN_DAYS)).isoformat()
+    # Ballchasing requires RFC3339 (with time + "Z"), not just a date.
+    created_after = (
+        (event.start_date - timedelta(days=MARGIN_DAYS)).isoformat()
+        + "T00:00:00Z"
+    )
+    created_before = (
+        (end_date + timedelta(days=MARGIN_DAYS)).isoformat() + "T23:59:59Z"
+    )
 
     candidates = await client.search_groups(
         name=event.name,

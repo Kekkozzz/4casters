@@ -5,9 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-import pytest
-
-from scraper.liquipedia.parsers.match import MatchParseError, parse_matches
+from scraper.liquipedia.parsers.match import parse_matches
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -74,7 +72,11 @@ def test_match_without_two_opponents_is_skipped() -> None:
     assert matches == []
 
 
-def test_invalid_date_raises() -> None:
+def test_invalid_date_is_skipped_not_raised() -> None:
+    # Real RLCS pages embed {{Abbr/EST}} templates and other non-trivial
+    # date representations in |date=. We must ingest the match anyway
+    # rather than crash the whole backfill — scheduled_at falls back
+    # to None.
     wikitext = (
         "{{MatchList|id=s|title=Stub|bestof=3\n"
         "|match1={{Match\n"
@@ -84,8 +86,9 @@ def test_invalid_date_raises() -> None:
         "}}\n"
         "}}"
     )
-    with pytest.raises(MatchParseError, match="date"):
-        parse_matches(wikitext, event_slug="Stub_Event")
+    matches = parse_matches(wikitext, event_slug="Stub_Event")
+    assert len(matches) == 1
+    assert matches[0].scheduled_at is None
 
 
 def test_uses_utc_when_timezone_missing() -> None:

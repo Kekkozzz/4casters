@@ -52,14 +52,19 @@ def _team_name_to_slug(value: str) -> str:
 
 
 def _iter_balanced_templates(text: str, name: str) -> list[str]:
-    """Yield the full body (between `{{name` and matching `}}`) for each occurrence."""
-    needle = "{{" + name
+    """Yield bodies of `{{<name>...}}` at any depth.
+
+    Case-insensitive; word-boundary after the name so `{{Match}}` does
+    NOT collide with `{{MatchList}}` or `{{MatchSection}}`. Returns
+    bodies with the leading `|` (and optional newline) stripped.
+    """
+    pattern = re.compile(
+        r"\{\{\s*" + re.escape(name) + r"\b",
+        re.IGNORECASE,
+    )
     results: list[str] = []
-    i = 0
-    while True:
-        start = text.find(needle, i)
-        if start == -1:
-            return results
+    for m in pattern.finditer(text):
+        start = m.start()
         depth = 0
         j = start
         while j < len(text):
@@ -70,16 +75,16 @@ def _iter_balanced_templates(text: str, name: str) -> list[str]:
                 depth -= 1
                 j += 2
                 if depth == 0:
-                    body = text[start + 2 + len(name) : j - 2]
+                    body = text[m.end() : j - 2]
                     if body.startswith("|"):
+                        body = body[1:]
+                    if body.startswith("\n"):
                         body = body[1:]
                     results.append(body)
                     break
             else:
                 j += 1
-        else:
-            return results
-        i = j
+    return results
 
 
 def _parse_date(raw: str) -> datetime | None:
@@ -163,50 +168,132 @@ def _split_match_fields(body: str) -> dict[str, str]:
 
 
 def parse_matches(wikitext: str, *, event_slug: str) -> list[ParsedMatch]:
+    """Extract match rows from an event wikitext page.
+
+    Real RLCS pages mix three match-bearing layouts — MatchList wrappers
+    (mostly group stages), Bracket wrappers (playoffs), and bare top-level
+    `{{Match}}` templates. We walk every `{{Match}}` in the wikitext
+    and carry stage/format context from the nearest wrapping wrapper if
+    one is visible on the page.
+    """
+    # Build a "context" lookup: for each byte range of a wrapper template,
+    # remember the stage+format so inner Match blocks inherit them.
+    contexts = _collect_match_contexts(wikitext)
+
+    # Iterate every {{Match}} regardless of nesting.
+    match_ranges = _find_template_ranges(wikitext, "Match")
+
     matches: list[ParsedMatch] = []
-    for list_body in _iter_balanced_templates(wikitext, "MatchList"):
-        header_line = list_body.split("\n", 1)[0]
-        header_params = parse_template_params(header_line)
-        stage = clean_value(header_params.get("title", "")) or None
-        bestof_match = _BESTOF_RE.search(list_body)
-        format_value = f"Bo{bestof_match.group(1)}" if bestof_match else None
-
-        for match_body in _iter_balanced_templates(list_body, "Match"):
-            fields = _split_match_fields(match_body)
-            opp1 = fields.get("opponent1", "")
-            opp2 = fields.get("opponent2", "")
-            if not opp1 or not opp2:
-                continue
-            team_opp1 = _iter_balanced_templates(opp1, "TeamOpponent")
-            team_opp2 = _iter_balanced_templates(opp2, "TeamOpponent")
-            if not team_opp1 or not team_opp2:
-                continue
-            team_a_id, score_a = _parse_team_opponent(team_opp1[0])
-            team_b_id, score_b = _parse_team_opponent(team_opp2[0])
+    for start, end, body in match_ranges:
+        fields = _split_match_fields(body)
+        opp1 = fields.get("opponent1", "")
+        opp2 = fields.get("opponent2", "")
+        if not opp1 or not opp2:
+            continue
+        team_opp1 = _iter_balanced_templates(opp1, "TeamOpponent")
+        team_opp2 = _iter_balanced_templates(opp2, "TeamOpponent")
+        if not team_opp1 or not team_opp2:
+            continue
+        team_a_id, score_a = _parse_team_opponent(team_opp1[0])
+        team_b_id, score_b = _parse_team_opponent(team_opp2[0])
+        try:
             scheduled_at = _parse_date(fields.get("date", ""))
+        except MatchParseError:
+            # Real pages sometimes embed {{Abbr/EST}} or other unexpected
+            # formats. Skip the date rather than kill the whole backfill.
+            scheduled_at = None
 
-            stage_for_id = stage or "match"
-            match_id = (
-                f"{event_slug}:{stage_for_id}:{team_a_id}-vs-{team_b_id}"
-            )
-            # Ensure uniqueness if the same two teams meet twice in a stage.
-            if any(m.id == match_id for m in matches):
-                suffix = 2
-                while any(m.id == f"{match_id}#{suffix}" for m in matches):
-                    suffix += 1
-                match_id = f"{match_id}#{suffix}"
+        stage, format_value = _context_for_range(contexts, start, end)
+        stage_for_id = stage or "match"
+        match_id = f"{event_slug}:{stage_for_id}:{team_a_id}-vs-{team_b_id}"
+        if any(m.id == match_id for m in matches):
+            suffix = 2
+            while any(m.id == f"{match_id}#{suffix}" for m in matches):
+                suffix += 1
+            match_id = f"{match_id}#{suffix}"
 
-            matches.append(
-                ParsedMatch(
-                    id=match_id,
-                    event_id=event_slug,
-                    team_a_id=team_a_id,
-                    team_b_id=team_b_id,
-                    scheduled_at=scheduled_at,
-                    stage=stage,
-                    format=format_value,
-                    score_a=score_a,
-                    score_b=score_b,
-                )
+        matches.append(
+            ParsedMatch(
+                id=match_id,
+                event_id=event_slug,
+                team_a_id=team_a_id,
+                team_b_id=team_b_id,
+                scheduled_at=scheduled_at,
+                stage=stage,
+                format=format_value,
+                score_a=score_a,
+                score_b=score_b,
             )
+        )
     return matches
+
+
+def _find_template_ranges(
+    text: str, name: str
+) -> list[tuple[int, int, str]]:
+    """Return (abs_start, abs_end_exclusive, body) for every {{<name>...}}."""
+    pattern = re.compile(
+        r"\{\{\s*" + re.escape(name) + r"\b",
+        re.IGNORECASE,
+    )
+    out: list[tuple[int, int, str]] = []
+    for m in pattern.finditer(text):
+        start = m.start()
+        depth = 0
+        j = start
+        while j < len(text):
+            if text[j : j + 2] == "{{":
+                depth += 1
+                j += 2
+            elif text[j : j + 2] == "}}":
+                depth -= 1
+                j += 2
+                if depth == 0:
+                    body = text[m.end() : j - 2]
+                    if body.startswith("|"):
+                        body = body[1:]
+                    if body.startswith("\n"):
+                        body = body[1:]
+                    out.append((start, j, body))
+                    break
+            else:
+                j += 1
+    return out
+
+
+def _collect_match_contexts(
+    wikitext: str,
+) -> list[tuple[int, int, str | None, str | None]]:
+    """Return (start, end, stage, format) for each wrapper template.
+
+    A wrapper is any template whose body contains `{{Match` blocks —
+    matchlist, bracket, matchsection, etc. stage is taken from `title=`
+    in the header line; format from `bestof=` anywhere in the body.
+    """
+    ctxs: list[tuple[int, int, str | None, str | None]] = []
+    for wrapper in ("MatchList", "Matchlist", "Bracket", "MatchSection"):
+        for start, end, body in _find_template_ranges(wikitext, wrapper):
+            header_line = body.split("\n", 1)[0]
+            header_params = parse_template_params(header_line)
+            stage = clean_value(header_params.get("title", "")) or None
+            bestof_match = _BESTOF_RE.search(body)
+            format_value = f"Bo{bestof_match.group(1)}" if bestof_match else None
+            ctxs.append((start, end, stage, format_value))
+    return ctxs
+
+
+def _context_for_range(
+    contexts: list[tuple[int, int, str | None, str | None]],
+    start: int,
+    end: int,
+) -> tuple[str | None, str | None]:
+    """Smallest wrapper span that fully contains [start, end)."""
+    best: tuple[int, str | None, str | None] | None = None
+    for c_start, c_end, stage, fmt in contexts:
+        if c_start <= start and end <= c_end:
+            span = c_end - c_start
+            if best is None or span < best[0]:
+                best = (span, stage, fmt)
+    if best is None:
+        return None, None
+    return best[1], best[2]
