@@ -48,6 +48,15 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 
+[tool.ruff.lint.per-file-ignores]
+# The quote corpus deliberately handles unicode punctuation (smart
+# quotes, em-dash, en-dash, NBSP) because that's what shows up in
+# real source text. Suppressing the "ambiguous character" lints in
+# just these files lets the rest of the codebase keep the guardrail.
+"src/scraper/quotes/liquipedia_parser.py" = ["RUF001", "RUF003"]
+"src/scraper/quotes/types.py" = ["RUF001", "RUF003"]
+"tests/test_quote_types.py" = ["RUF001"]
+
 [tool.mypy]
 python_version = "3.12"
 strict = true

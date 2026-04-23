@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Annotated
 
 import typer
 from rich.console import Console
@@ -13,15 +14,18 @@ from scraper.db.pool import pool_from_settings
 from scraper.db.repo import LiquipediaRepo
 from scraper.liquipedia.client import LiquipediaClient
 from scraper.pipeline import backfill_event
+from scraper.pipeline_quotes import ingest_liquipedia_quotes
 from scraper.pipeline_stats import SupabaseEventLookup, refresh_event_stats
 
 app = typer.Typer(
-    help="4casters ingestion CLI (Liquipedia + Ballchasing)",
+    help="4casters ingestion CLI (Liquipedia + Ballchasing + Quotes)",
     no_args_is_help=True,
     add_completion=False,
 )
 stats_app = typer.Typer(help="Ballchasing stats commands", no_args_is_help=True)
+quotes_app = typer.Typer(help="Quote corpus commands", no_args_is_help=True)
 app.add_typer(stats_app, name="stats")
+app.add_typer(quotes_app, name="quotes")
 console = Console()
 
 
@@ -149,4 +153,61 @@ def stats_link(
 ) -> None:
     """Manually link an event to a ballchasing group (overrides auto-match)."""
     exit_code = asyncio.run(_run_stats_link(event_slug, group_id))
+    raise typer.Exit(code=exit_code)
+
+
+async def _run_quotes_liquipedia(slugs: list[str], all_players: bool) -> int:
+    settings = get_settings()
+    async with pool_from_settings() as pool, LiquipediaClient(
+        user_agent=settings.liquipedia_user_agent,
+        min_interval_seconds=settings.liquipedia_min_interval_seconds,
+    ) as client, pool.acquire() as conn:
+        repo = LiquipediaRepo(conn)
+        if all_players:
+            rows = await conn.fetch("SELECT id FROM players ORDER BY id")
+            slugs = [row["id"] for row in rows]
+        if not slugs:
+            console.print("[yellow]no players to process[/]")
+            return 0
+        report = await ingest_liquipedia_quotes(slugs, client=client, repo=repo)
+
+    console.rule(f"[bold]Liquipedia quotes ingest ({len(slugs)} players)")
+    console.print(
+        f"processed={report.total_players_processed}  "
+        f"inserted={report.quotes_inserted}  "
+        f"deduped={report.quotes_deduped}"
+    )
+    if report.players_skipped:
+        head = ", ".join(report.players_skipped[:10])
+        tail = len(report.players_skipped) - 10
+        suffix = f" (+{tail} more)" if tail > 0 else ""
+        console.print(f"[yellow]no liquipedia page:[/] {head}{suffix}")
+    if report.errors:
+        for err in report.errors[:10]:
+            console.print(f"[red]error:[/] {err}")
+        return 1
+    return 0
+
+
+@quotes_app.command("liquipedia")
+def quotes_liquipedia(
+    slugs: Annotated[
+        list[str] | None,
+        typer.Argument(
+            help="Player slugs to ingest. Omit with --all to process every player."
+        ),
+    ] = None,
+    all_players: Annotated[
+        bool,
+        typer.Option("--all", help="Ingest quotes for every player in the DB."),
+    ] = False,
+) -> None:
+    """Ingest quotes from Liquipedia player pages (==Quotes== section)."""
+    slug_list = list(slugs) if slugs else []
+    if not slug_list and not all_players:
+        console.print(
+            "[red]error:[/] pass at least one player slug, or use --all"
+        )
+        raise typer.Exit(code=2)
+    exit_code = asyncio.run(_run_quotes_liquipedia(slug_list, all_players))
     raise typer.Exit(code=exit_code)

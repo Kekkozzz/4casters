@@ -8,6 +8,7 @@ import {
   text,
   timestamp,
   uuid,
+  vector,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -200,5 +201,39 @@ export const eventTeamStats = pgTable(
   (t) => [
     primaryKey({ columns: [t.eventId, t.teamId] }),
     index("event_team_stats_team_idx").on(t.teamId),
+  ],
+);
+
+/* ──────────────────────────────────────────────────────────────
+   Quote corpus (Sub-plan #5).
+
+   Every quote ships with a clickable source (no-source-no-show
+   guardrail). Dedup by content_hash (SHA-256 of normalized text)
+   so the same quote surfaced from two sources lands once.
+
+   embedding: 768-dim vector for pgvector similarity search.
+   Populated lazily by a background job, not during ingestion.
+   ────────────────────────────────────────────────────────────── */
+
+export const quotes = pgTable(
+  "quotes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    speakerId: text("speaker_id")
+      .notNull()
+      .references(() => players.id, { onDelete: "cascade" }),
+    text: text("text").notNull(),
+    sourceUrl: text("source_url").notNull(),
+    sourceType: text("source_type").notNull(), // "liquipedia" | "youtube" | "twitter"
+    sourceTimestamp: timestamp("source_timestamp", { withTimezone: true }),
+    contentHash: text("content_hash").notNull().unique(),
+    embedding: vector("embedding", { dimensions: 768 }),
+    capturedAt: timestamp("captured_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("quotes_speaker_idx").on(t.speakerId),
+    index("quotes_source_type_idx").on(t.sourceType),
   ],
 );

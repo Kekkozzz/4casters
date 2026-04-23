@@ -1,0 +1,21 @@
+{{Infobox player
+|id=itachi
+|name=Noah Grünefeld
+|country=de
+|nationality=Germany
+|team=Halcyon Esports
+|team_link=Halcyon_Esports
+}}
+
+'''Noah "itachi" Grünefeld''' is a German professional Rocket League player.
+
+==Career==
+itachi joined Halcyon in 2024 after two years at...
+
+==Quotes==
+{{Quote|text=We play for each other every single game.|author=itachi|source=Post-match interview, RLCS 2025 Fall Major}}
+{{Quote|text=Mechanics are overrated without teamwork.|author=itachi|source=Liefx podcast, 2025}}
+"I think we were the better team today." — itachi, post-match press conference at RLCS 2025 Fall Regional 3
+
+==Trivia==
+* Known for using the Fennec car body exclusively.

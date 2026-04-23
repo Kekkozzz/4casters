@@ -15,6 +15,7 @@ from scraper.liquipedia.parsers.event import ParsedEvent
 from scraper.liquipedia.parsers.match import ParsedMatch
 from scraper.liquipedia.parsers.player import ParsedPlayer
 from scraper.liquipedia.parsers.team import ParsedRosterEntry, ParsedTeam
+from scraper.quotes.types import ParsedQuote
 
 
 class Executor(Protocol):
@@ -204,6 +205,32 @@ class LiquipediaRepo:
             stat.source_group_id,
         )
 
+    async def upsert_quote(self, quote: ParsedQuote) -> int:
+        """Insert a quote, skipping silently if its content_hash already exists.
+
+        Returns 1 if the row was newly inserted, 0 if it was a duplicate.
+        """
+        row = await self._conn.fetchrow(
+            _UPSERT_QUOTE,
+            quote.speaker_id,
+            quote.text,
+            quote.source_url,
+            quote.source_type.value,
+            quote.source_timestamp,
+            quote.hash,
+        )
+        return 1 if row is not None else 0
+
+    async def count_quotes_for_speaker(self, speaker_id: str) -> int:
+        row = await self._conn.fetchrow(
+            "SELECT COUNT(*)::int AS c FROM quotes WHERE speaker_id = $1",
+            speaker_id,
+        )
+        if row is None:
+            return 0
+        value = row["c"]
+        return int(value) if isinstance(value, int) else 0
+
 
 _UPSERT_EVENT_GROUP = """
 INSERT INTO event_groups (event_id, ballchasing_group_id, linked_by, confidence, linked_at)
@@ -249,4 +276,15 @@ ON CONFLICT (event_id, team_id) DO UPDATE SET
   goals_against = EXCLUDED.goals_against,
   source_group_id = EXCLUDED.source_group_id,
   captured_at = NOW()
+"""
+
+# Dedup lives in the UNIQUE(content_hash) constraint. ON CONFLICT DO NOTHING
+# + RETURNING id means fetchrow returns the inserted row or None on conflict.
+_UPSERT_QUOTE = """
+INSERT INTO quotes (
+  speaker_id, text, source_url, source_type, source_timestamp,
+  content_hash, captured_at
+) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+ON CONFLICT (content_hash) DO NOTHING
+RETURNING id
 """

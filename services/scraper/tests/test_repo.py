@@ -238,3 +238,57 @@ async def test_upsert_event_team_stat_maps_fields() -> None:
     assert args[3] == 8
     assert args[4] == 4
     assert args[7] == "g"
+
+
+@pytest.mark.asyncio
+async def test_upsert_quote_returns_1_when_inserted() -> None:
+    from scraper.db.repo import LiquipediaRepo
+    from scraper.quotes.types import ParsedQuote, QuoteSource
+
+    conn = FakeConn(fetchrow_return={"id": "uuid-1"})
+    repo = LiquipediaRepo(conn)
+    q = ParsedQuote(
+        speaker_id="itachi",
+        text="We play for each other.",
+        source_url="https://liquipedia.net/rocketleague/itachi#Quotes",
+        source_type=QuoteSource.LIQUIPEDIA,
+    )
+    written = await repo.upsert_quote(q)
+    assert written == 1
+    query, args = conn.calls[0]
+    assert "INSERT INTO quotes" in query
+    assert "ON CONFLICT (content_hash) DO NOTHING" in query
+    assert args[0] == "itachi"
+    assert args[3] == "liquipedia"
+    assert args[5] == q.hash
+
+
+@pytest.mark.asyncio
+async def test_upsert_quote_returns_0_on_dedup_conflict() -> None:
+    from scraper.db.repo import LiquipediaRepo
+    from scraper.quotes.types import ParsedQuote, QuoteSource
+
+    # ON CONFLICT DO NOTHING + RETURNING → fetchrow returns None.
+    conn = FakeConn(fetchrow_return=None)
+    repo = LiquipediaRepo(conn)
+    written = await repo.upsert_quote(
+        ParsedQuote(
+            speaker_id="itachi",
+            text="dup",
+            source_url="https://example.com",
+            source_type=QuoteSource.LIQUIPEDIA,
+        )
+    )
+    assert written == 0
+
+
+@pytest.mark.asyncio
+async def test_count_quotes_for_speaker_returns_int() -> None:
+    from scraper.db.repo import LiquipediaRepo
+
+    conn = FakeConn(fetchrow_return={"c": 7})
+    repo = LiquipediaRepo(conn)
+    assert await repo.count_quotes_for_speaker("itachi") == 7
+
+    empty = FakeConn(fetchrow_return=None)
+    assert await LiquipediaRepo(empty).count_quotes_for_speaker("x") == 0

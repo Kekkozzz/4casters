@@ -22,6 +22,13 @@
       "when": 1776867529024,
       "tag": "0002_stormy_marvex",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1776931238765,
+      "tag": "0003_green_jubilee",
+      "breakpoints": true
     }
   ]
 }
