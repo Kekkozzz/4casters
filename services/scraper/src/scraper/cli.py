@@ -12,6 +12,8 @@ from scraper.ballchasing.client import BallchasingClient
 from scraper.config import get_settings
 from scraper.db.pool import pool_from_settings
 from scraper.db.repo import LiquipediaRepo
+from scraper.dev_seed import EVENT_SLUG as DEV_SEED_EVENT_SLUG
+from scraper.dev_seed import seed_dev_data
 from scraper.liquipedia.client import LiquipediaClient
 from scraper.pipeline import backfill_event
 from scraper.pipeline_embeddings import backfill_embeddings
@@ -315,4 +317,33 @@ def quotes_embed(
 ) -> None:
     """Backfill embeddings for quotes with NULL embedding column."""
     exit_code = asyncio.run(_run_quotes_embed(max_rows))
+    raise typer.Exit(code=exit_code)
+
+
+async def _run_dev_seed() -> int:
+    async with pool_from_settings() as pool, pool.acquire() as conn:
+        repo = LiquipediaRepo(conn)
+        report = await seed_dev_data(repo)
+
+    console.rule(f"[bold]Dev seed: {DEV_SEED_EVENT_SLUG}")
+    console.print(
+        f"event={report.event_written}  "
+        f"teams={report.teams_written}  "
+        f"players={report.players_written}  "
+        f"roster_entries={report.roster_entries_written}  "
+        f"matches={report.matches_written}  "
+        f"stats_rows={report.stats_written}  "
+        f"quotes={report.quotes_written}"
+    )
+    console.print(
+        "[green]done[/]  open http://localhost:3000/events and pick "
+        f"[bold]{DEV_SEED_EVENT_SLUG}[/bold]"
+    )
+    return 0
+
+
+@app.command("dev-seed")
+def dev_seed() -> None:
+    """Populate the DB with a canned dataset for local UI smoke (zero HTTP)."""
+    exit_code = asyncio.run(_run_dev_seed())
     raise typer.Exit(code=exit_code)
