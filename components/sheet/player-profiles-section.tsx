@@ -27,7 +27,9 @@ const STAT_LABELS: Record<StatKey, string> = {
 
 function formatStat(key: StatKey, v: number): string {
   if (key === "gpg" || key === "demos") return v.toFixed(2);
-  return `${(v * 100).toFixed(0)}%`;
+  // Ballchasing returns percentages as 0-100 floats (e.g. 26.67 = 26.67%),
+  // so no * 100. Round to one decimal so "72.1%" renders as-is.
+  return `${v.toFixed(1)}%`;
 }
 
 export function PlayerProfilesSection({
