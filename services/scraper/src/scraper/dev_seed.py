@@ -65,8 +65,11 @@ _EVENT = ParsedEvent(
     tier="1",
     tier_type="Major",
     region="Europe",
-    start_date=date(2026, 2, 19),
-    end_date=date(2026, 2, 22),
+    # Dates deliberately a few days in the future so the event shows up on
+    # /events (DAL filters end_date >= today - 14d) and the SF matches
+    # render as "upcoming" with a Generate CTA instead of historical.
+    start_date=date(2026, 4, 24),
+    end_date=date(2026, 4, 28),
     liquipedia_url=_lq(EVENT_SLUG),
 )
 
@@ -157,6 +160,7 @@ def _roster_entries() -> list[ParsedRosterEntry]:
 
 def _matches() -> list[ParsedMatch]:
     utc = UTC
+    # Group stage has already concluded (Apr 24-25); SFs are Apr 26 upcoming.
     return [
         # Group stage — all completed
         ParsedMatch(
@@ -164,7 +168,7 @@ def _matches() -> list[ParsedMatch]:
             event_id=EVENT_SLUG,
             team_a_id="Halcyon_Esports",
             team_b_id="Verdant_GG",
-            scheduled_at=datetime(2026, 2, 19, 17, 0, tzinfo=utc),
+            scheduled_at=datetime(2026, 4, 24, 17, 0, tzinfo=utc),
             stage="Group A",
             format="Bo5",
             score_a=3,
@@ -176,7 +180,7 @@ def _matches() -> list[ParsedMatch]:
             event_id=EVENT_SLUG,
             team_a_id="Northbyte",
             team_b_id="Mirage",
-            scheduled_at=datetime(2026, 2, 19, 19, 0, tzinfo=utc),
+            scheduled_at=datetime(2026, 4, 24, 19, 0, tzinfo=utc),
             stage="Group A",
             format="Bo5",
             score_a=3,
@@ -188,7 +192,7 @@ def _matches() -> list[ParsedMatch]:
             event_id=EVENT_SLUG,
             team_a_id="Halcyon_Esports",
             team_b_id="Northbyte",
-            scheduled_at=datetime(2026, 2, 20, 17, 0, tzinfo=utc),
+            scheduled_at=datetime(2026, 4, 25, 17, 0, tzinfo=utc),
             stage="Group A",
             format="Bo5",
             score_a=2,
@@ -200,7 +204,7 @@ def _matches() -> list[ParsedMatch]:
             event_id=EVENT_SLUG,
             team_a_id="Verdant_GG",
             team_b_id="Mirage",
-            scheduled_at=datetime(2026, 2, 20, 19, 0, tzinfo=utc),
+            scheduled_at=datetime(2026, 4, 25, 19, 0, tzinfo=utc),
             stage="Group A",
             format="Bo5",
             score_a=3,
@@ -213,7 +217,7 @@ def _matches() -> list[ParsedMatch]:
             event_id=EVENT_SLUG,
             team_a_id="Halcyon_Esports",
             team_b_id="Mirage",
-            scheduled_at=datetime(2026, 2, 21, 18, 0, tzinfo=utc),
+            scheduled_at=datetime(2026, 4, 26, 18, 0, tzinfo=utc),
             stage="SF",
             format="Bo7",
             score_a=None,
@@ -225,7 +229,7 @@ def _matches() -> list[ParsedMatch]:
             event_id=EVENT_SLUG,
             team_a_id="Verdant_GG",
             team_b_id="Northbyte",
-            scheduled_at=datetime(2026, 2, 21, 20, 30, tzinfo=utc),
+            scheduled_at=datetime(2026, 4, 26, 20, 30, tzinfo=utc),
             stage="SF",
             format="Bo7",
             score_a=None,
