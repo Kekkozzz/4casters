@@ -17,9 +17,10 @@ const TIER_OPTS: readonly EventTier[] = ["S", "A", "B"] as const;
 
 interface Props {
   events: EventRow[];
+  loadError?: boolean;
 }
 
-export function EventsClient({ events }: Props) {
+export function EventsClient({ events, loadError = false }: Props) {
   const [regions, setRegions] = React.useState<Set<EventRegion>>(new Set());
   const [tiers, setTiers] = React.useState<Set<EventTier>>(new Set());
   const [query, setQuery] = React.useState("");
@@ -76,7 +77,9 @@ export function EventsClient({ events }: Props) {
       />
 
       <div className="px-8 py-6">
-        {events.length === 0 ? (
+        {loadError ? (
+          <LoadErrorState />
+        ) : events.length === 0 ? (
           <EmptyState />
         ) : (
           <>
@@ -125,6 +128,21 @@ export function EventsClient({ events }: Props) {
         )}
       </div>
     </>
+  );
+}
+
+function LoadErrorState() {
+  return (
+    <div className="border border-line rounded-card px-8 py-16 text-center max-w-2xl mx-auto bg-surf1">
+      <div className="text-[14px] font-semibold mb-2">Couldn&apos;t load events</div>
+      <p className="text-[12.5px] text-mute leading-relaxed max-w-lg mx-auto mb-4">
+        The app reached the protected page, but loading event data failed on the server.
+        Check deployment environment variables and database migrations, then reload.
+      </p>
+      <p className="mono text-[11px] text-mute2">
+        Required in production: DATABASE_URL + migrated schema
+      </p>
+    </div>
   );
 }
 
