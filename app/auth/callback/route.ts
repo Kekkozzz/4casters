@@ -1,35 +1,37 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 
 /**
  * Supabase magic-link / OAuth callback handler.
  *
- * The `code` arrives as a URL param; we exchange it for a session and
- * redirect the user to `redirect_to` (defaults to /events). The session
- * cookies get set during the exchange via the cookie adapter below.
+ * Why cookies go on the NextResponse directly (not via `cookies()` from
+ * next/headers): in a route handler that returns `NextResponse.redirect`,
+ * the redirect response is constructed independently of the `cookies()`
+ * helper, so `cookieStore.set(...)` never propagates. Setting cookies on
+ * the NextResponse instance via `response.cookies.set(...)` IS honored
+ * across the redirect, which is what the Supabase session needs to stick.
  */
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const code = url.searchParams.get("code");
-  const redirectTo = url.searchParams.get("redirect_to") ?? "/events";
+export async function GET(req: NextRequest) {
+  const code = req.nextUrl.searchParams.get("code");
+  const redirectTo = req.nextUrl.searchParams.get("redirect_to") ?? "/events";
 
   if (!code) {
     return NextResponse.redirect(new URL("/login?error=missing_code", req.url));
   }
 
-  const cookieStore = await cookies();
+  const response = NextResponse.redirect(new URL(redirectTo, req.url));
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
         getAll() {
-          return cookieStore.getAll();
+          return req.cookies.getAll();
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
+            response.cookies.set(name, value, options);
           });
         },
       },
@@ -46,5 +48,5 @@ export async function GET(req: Request) {
     );
   }
 
-  return NextResponse.redirect(new URL(redirectTo, req.url));
+  return response;
 }
