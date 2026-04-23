@@ -111,25 +111,38 @@ class LiquipediaClient:
         return parse
 
     async def _request(self, params: dict[str, str]) -> dict[str, Any]:
+        # Retry transient 429s with exponential backoff; respect Retry-After
+        # header when the server provides one. Max 4 attempts total.
+        backoffs = [5.0, 15.0, 45.0]
         async with self._lock:
-            await self._respect_rate_limit()
-            try:
-                resp = await self._client.get(self._base_url, params=params)
-            except httpx.HTTPError as exc:
-                raise LiquipediaError(f"transport error: {exc}") from exc
-            finally:
-                self._last_request_at = time.perf_counter()
-            if resp.status_code >= 400:
-                raise LiquipediaError(
-                    f"HTTP {resp.status_code} from liquipedia: {resp.text[:200]}"
-                )
-            try:
-                payload = resp.json()
-            except ValueError as exc:
-                raise LiquipediaError(f"non-json response: {exc}") from exc
-            if not isinstance(payload, dict):
-                raise LiquipediaError("liquipedia response was not a JSON object")
-            return payload
+            for backoff in [*backoffs, None]:
+                await self._respect_rate_limit()
+                try:
+                    resp = await self._client.get(self._base_url, params=params)
+                except httpx.HTTPError as exc:
+                    raise LiquipediaError(f"transport error: {exc}") from exc
+                finally:
+                    self._last_request_at = time.perf_counter()
+
+                if resp.status_code == 429 and backoff is not None:
+                    retry_after = resp.headers.get("retry-after")
+                    wait_s = _parse_retry_after(retry_after) or backoff
+                    await asyncio.sleep(wait_s)
+                    continue
+
+                if resp.status_code >= 400:
+                    raise LiquipediaError(
+                        f"HTTP {resp.status_code} from liquipedia: {resp.text[:200]}"
+                    )
+                try:
+                    payload = resp.json()
+                except ValueError as exc:
+                    raise LiquipediaError(f"non-json response: {exc}") from exc
+                if not isinstance(payload, dict):
+                    raise LiquipediaError("liquipedia response was not a JSON object")
+                return payload
+            # Shouldn't get here — the loop either returns or raises.
+            raise LiquipediaError("exhausted retries")
 
     async def _respect_rate_limit(self) -> None:
         if self._min_interval <= 0 or self._last_request_at == 0:
@@ -138,3 +151,13 @@ class LiquipediaClient:
         wait = self._min_interval - elapsed
         if wait > 0:
             await asyncio.sleep(wait)
+
+
+def _parse_retry_after(value: str | None) -> float | None:
+    """Parse Retry-After header. Supports integer seconds form only."""
+    if not value:
+        return None
+    try:
+        return max(0.0, float(value))
+    except ValueError:
+        return None

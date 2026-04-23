@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     liquipedia_user_agent: str = (
         "4casters/0.3 (https://github.com/Kekkozzz/4casters; contact@4casters.app)"
     )
-    liquipedia_min_interval_seconds: float = 2.0
+    liquipedia_min_interval_seconds: float = 3.0
     ballchasing_api_key: str = ""
     ballchasing_min_interval_seconds: float = 0.5  # 2 req/s free tier
     # Accept either GEMINI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY —
