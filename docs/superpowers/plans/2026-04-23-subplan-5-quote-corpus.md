@@ -58,26 +58,25 @@ speaker-attributed chunks.
 - `source_type`: `"youtube"`
 - `source_timestamp`: seconds into video
 
-### Phase C — Twitter/X (risk HIGH — verify before coding)
+### Phase C — Twitter/X — DEFERRED to v1.5 (probe 2026-04-23)
 
-**The octane lesson applies here.** We already know:
-- `snscrape` has been dead since Twitter's 2023 API lockdown.
-- Twitter API v2 costs $100/month minimum (Basic tier) for writes and
-  decent read volumes; the free tier is effectively useless (1,500
-  tweets/month).
-- Nitter (community alt-frontend) is mostly dead as of 2024.
-- Playwright-based scraping is against ToS and fragile.
+**Decision locked in after probe on 2026-04-23:**
+- Official X API free tier dead since Feb 2026 (pay-per-use default, no
+  new Basic signups, 1 req / 24h on legacy free, 1,500 tweets / month).
+- `twscrape` (vladkens, last release 2025-04-29) is active but requires
+  burner X account login+cookies, ToS discourages multi-account, needs
+  residential proxies to bypass Cloudflare WAF.
+- No zero-cost zero-ToS-risk path exists.
 
-**Before writing any Twitter code** we'll verify which of these actually
-works in April 2026:
-1. Probe current Twitter API v2 free tier quotas.
-2. Check if any community alternative (e.g., `tweety`, `twscrape`) has
-   active maintainers and working auth.
-3. If none viable at zero cost, recommend the user either (a) pay $100/mo
-   for Basic tier, or (b) drop Twitter from MVP and add it in v1.5.
+**Phase C is deferred to v1.5** after beta signal confirms demand.
+Liquipedia Quotes (Phase A) + YouTube transcripts (Phase B) cover the
+"curated, attributable, sourced" quotes that Jorby and the other
+customer-discovery casters described as valuable; Twitter is mostly
+hot-takes/reactions that the caster already follows their own way.
 
-No commitment to ship Phase C until the probe confirms it's buildable.
-We will flag this decision before Task 7.
+If a beta caster requests it explicitly, we'll revisit (likely via
+twscrape + a single burner account owned by 4casters ops, behind a
+disclaimer that coverage can lag).
 
 ## Schema additions (migration 0003)
 

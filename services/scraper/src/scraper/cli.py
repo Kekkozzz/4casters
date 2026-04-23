@@ -16,6 +16,10 @@ from scraper.liquipedia.client import LiquipediaClient
 from scraper.pipeline import backfill_event
 from scraper.pipeline_quotes import ingest_liquipedia_quotes
 from scraper.pipeline_stats import SupabaseEventLookup, refresh_event_stats
+from scraper.pipeline_youtube_quotes import ingest_youtube_quotes
+from scraper.quotes.youtube import fetch_channel_feed
+from scraper.quotes.youtube_channels import DEFAULT_CHANNELS
+from scraper.quotes.youtube_transcripts import fetch_transcript
 
 app = typer.Typer(
     help="4casters ingestion CLI (Liquipedia + Ballchasing + Quotes)",
@@ -210,4 +214,55 @@ def quotes_liquipedia(
         )
         raise typer.Exit(code=2)
     exit_code = asyncio.run(_run_quotes_liquipedia(slug_list, all_players))
+    raise typer.Exit(code=exit_code)
+
+
+async def _run_quotes_youtube(max_videos: int | None) -> int:
+    if not DEFAULT_CHANNELS:
+        console.print(
+            "[yellow]no channels configured.[/] Edit "
+            "src/scraper/quotes/youtube_channels.py and uncomment/fill in "
+            "DEFAULT_CHANNELS before running."
+        )
+        return 0
+    async with pool_from_settings() as pool, pool.acquire() as conn:
+        repo = LiquipediaRepo(conn)
+        report = await ingest_youtube_quotes(
+            DEFAULT_CHANNELS,
+            repo=repo,
+            feed_fetcher=fetch_channel_feed,
+            transcript_fetcher=fetch_transcript,
+            max_videos_per_channel=max_videos,
+        )
+
+    console.rule(f"[bold]YouTube quotes ingest ({len(DEFAULT_CHANNELS)} channels)")
+    console.print(
+        f"channels={report.channels_processed}  videos={report.videos_processed}  "
+        f"inserted={report.quotes_inserted}  deduped={report.quotes_deduped}"
+    )
+    if report.videos_skipped_no_transcript:
+        n = len(report.videos_skipped_no_transcript)
+        console.print(f"[yellow]no transcript:[/] {n} video(s)")
+    if report.videos_skipped_no_attribution:
+        n = len(report.videos_skipped_no_attribution)
+        console.print(f"[yellow]no speaker attribution:[/] {n} video(s)")
+    if report.errors:
+        for err in report.errors[:10]:
+            console.print(f"[red]error:[/] {err}")
+        return 1
+    return 0
+
+
+@quotes_app.command("youtube")
+def quotes_youtube(
+    max_videos: Annotated[
+        int | None,
+        typer.Option(
+            "--max-videos",
+            help="Cap videos fetched per channel (useful for smoke runs).",
+        ),
+    ] = None,
+) -> None:
+    """Ingest quotes from configured YouTube channels (RSS + transcripts)."""
+    exit_code = asyncio.run(_run_quotes_youtube(max_videos))
     raise typer.Exit(code=exit_code)

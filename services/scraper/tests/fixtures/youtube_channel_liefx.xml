@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns:yt="http://www.youtube.com/xml/schemas/2015"
+      xmlns="http://www.w3.org/2005/Atom">
+  <title>Liefx</title>
+  <yt:channelId>UCL6JmiMXKoXS6bpP1D3bk8g</yt:channelId>
+  <entry>
+    <yt:videoId>abc12345678</yt:videoId>
+    <title>RLCS Recap: Major 1 Grand Finals — Halcyon vs Verdant GG</title>
+    <published>2026-03-22T21:00:00+00:00</published>
+  </entry>
+  <entry>
+    <yt:videoId>def12345678</yt:videoId>
+    <title>Why itachi is the best passer in RL right now</title>
+    <published>2026-03-20T18:30:00+00:00</published>
+  </entry>
+  <entry>
+    <yt:videoId>ghi12345678</yt:videoId>
+    <title>My tier list of the top 10 players in RLCS 2026</title>
+    <published>2026-03-18T15:00:00+00:00</published>
+  </entry>
+</feed>
