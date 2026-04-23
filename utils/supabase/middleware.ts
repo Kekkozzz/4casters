@@ -4,13 +4,16 @@ import { type NextRequest, NextResponse } from "next/server";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-export const createClient = (request: NextRequest) => {
-  // Create an unmodified response
-  let supabaseResponse = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  });
+/**
+ * Canonical Supabase SSR session-refresh helper.
+ *
+ * Do NOT put logic between `createServerClient` and
+ * `supabase.auth.getUser()` — the cookies on the request/response are
+ * what keeps the session alive across requests. Returns both the
+ * patched NextResponse and the user so the caller can gate routing.
+ */
+export async function updateSession(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(supabaseUrl!, supabaseKey!, {
     cookies: {
@@ -21,9 +24,7 @@ export const createClient = (request: NextRequest) => {
         cookiesToSet.forEach(({ name, value }) =>
           request.cookies.set(name, value),
         );
-        supabaseResponse = NextResponse.next({
-          request,
-        });
+        supabaseResponse = NextResponse.next({ request });
         cookiesToSet.forEach(({ name, value, options }) =>
           supabaseResponse.cookies.set(name, value, options),
         );
@@ -31,9 +32,9 @@ export const createClient = (request: NextRequest) => {
     },
   });
 
-  // Touch `supabase` to satisfy linters — auth refresh wiring lands in
-  // Sub-plan #7 (e.g., `await supabase.auth.getUser()` before returning).
-  void supabase;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  return supabaseResponse;
-};
+  return { supabaseResponse, user };
+}

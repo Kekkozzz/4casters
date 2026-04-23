@@ -2,13 +2,71 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Btn } from "@/components/ui/primitives";
 import { Mail, Check, ChevRight } from "@/components/ui/icons";
 import { SheetTeaser } from "./sheet-teaser";
+import { createClient } from "@/utils/supabase/client";
+
+const DEV_BYPASS = process.env.NEXT_PUBLIC_DEV_NO_AUTH === "true";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const search = useSearchParams();
+  const redirectTo = search.get("redirect_to") ?? "/events";
+
   const [email, setEmail] = React.useState("");
   const [sent, setSent] = React.useState(false);
+  const [pending, setPending] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+    setPending(true);
+    setError(null);
+    try {
+      const supabase = createClient();
+      const callback =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/auth/callback?redirect_to=${encodeURIComponent(redirectTo)}`
+          : undefined;
+      const { error: authErr } = await supabase.auth.signInWithOtp({
+        email,
+        options: callback ? { emailRedirectTo: callback } : undefined,
+      });
+      if (authErr) {
+        setError(authErr.message);
+        return;
+      }
+      setSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unexpected error");
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const onGoogle = async () => {
+    setPending(true);
+    setError(null);
+    try {
+      const supabase = createClient();
+      const callback =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/auth/callback?redirect_to=${encodeURIComponent(redirectTo)}`
+          : undefined;
+      const { error: authErr } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: callback ? { redirectTo: callback } : undefined,
+      });
+      if (authErr) setError(authErr.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unexpected error");
+    } finally {
+      setPending(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -45,13 +103,7 @@ export default function LoginPage() {
           </p>
 
           {!sent ? (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (email) setSent(true);
-              }}
-              className="space-y-3"
-            >
+            <form onSubmit={onSubmit} className="space-y-3">
               <label className="block">
                 <span className="block mono text-[10.5px] uppercase tracking-[0.14em] text-mute2 mb-1.5">
                   Work email
@@ -72,8 +124,14 @@ export default function LoginPage() {
                 </div>
               </label>
 
-              <Btn type="submit" variant="primary" size="lg" className="w-full justify-center">
-                Send magic link
+              <Btn
+                type="submit"
+                variant="primary"
+                size="lg"
+                className="w-full justify-center"
+                disabled={pending}
+              >
+                {pending ? "Sending…" : "Send magic link"}
               </Btn>
 
               <div className="flex items-center gap-3 py-1">
@@ -87,9 +145,30 @@ export default function LoginPage() {
                 size="lg"
                 className="w-full justify-center"
                 type="button"
+                onClick={onGoogle}
+                disabled={pending}
               >
                 Continue with Google
               </Btn>
+
+              {error ? (
+                <div className="mt-2 text-[11.5px] text-bad mono break-words">
+                  {error}
+                </div>
+              ) : null}
+
+              {DEV_BYPASS ? (
+                <Btn
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-center mt-2"
+                  type="button"
+                  onClick={() => router.push(redirectTo)}
+                >
+                  Dev bypass — skip auth
+                  <ChevRight size={12} />
+                </Btn>
+              ) : null}
             </form>
           ) : (
             <div className="border border-line rounded-card bg-surf1 p-5">
@@ -97,10 +176,19 @@ export default function LoginPage() {
                 <Check size={14} /> Magic link sent
               </div>
               <div className="text-[12.5px] text-mute mb-4 leading-[1.55]">
-                Check <span className="mono text-fg">{email}</span>. Link expires in 15 minutes.
+                Check <span className="mono text-fg">{email}</span>. Link expires in 15 minutes. If
+                it doesn&apos;t arrive within a minute, check spam — Supabase&apos;s free tier
+                defaults to 3 auth emails per hour.
               </div>
-              <Btn variant="outline" size="sm">
-                Simulate click — open app
+              <Btn
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSent(false);
+                  setError(null);
+                }}
+              >
+                Use a different email
                 <ChevRight size={13} />
               </Btn>
             </div>
