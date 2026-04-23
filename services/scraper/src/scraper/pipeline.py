@@ -95,14 +95,19 @@ async def backfill_event(
     )
 
     player_slugs: list[str] = []
+    # Track every team we failed to persist (404, network, parse, upsert).
+    # Matches referencing any of these must be skipped to avoid FK errors.
+    failed_teams: set[str] = set()
     for team_slug in team_slugs:
         try:
             team_wikitext = await client.get_wikitext(team_slug)
         except LiquipediaNotFoundError:
             report.teams_skipped.append(team_slug)
+            failed_teams.add(team_slug)
             continue
         except LiquipediaError as exc:
             report.errors.append(f"team fetch {team_slug}: {exc}")
+            failed_teams.add(team_slug)
             continue
         try:
             parsed = parse_team(
@@ -112,20 +117,38 @@ async def backfill_event(
             )
         except ValueError as exc:
             report.errors.append(f"team parse {team_slug}: {exc}")
+            failed_teams.add(team_slug)
             continue
-        await repo.upsert_team(parsed.team)
+        try:
+            await repo.upsert_team(parsed.team)
+        except Exception as exc:
+            report.errors.append(f"team upsert {team_slug}: {exc}")
+            failed_teams.add(team_slug)
+            continue
         report.teams_written += 1
         for entry in parsed.roster:
-            written = await repo.upsert_roster_entry(entry)
+            try:
+                written = await repo.upsert_roster_entry(entry)
+            except Exception as exc:
+                report.errors.append(
+                    f"roster upsert {entry.player_id}->{entry.team_id}: {exc}"
+                )
+                continue
             report.roster_entries_written += written
             if entry.player_id:
                 player_slugs.append(entry.player_id)
 
     # Matches need both teams to exist before we can satisfy FKs.
     for match in parsed_matches:
-        if match.team_a_id in report.teams_skipped or match.team_b_id in report.teams_skipped:
+        if match.team_a_id in failed_teams or match.team_b_id in failed_teams:
             continue
-        await repo.upsert_match(match)
+        try:
+            await repo.upsert_match(match)
+        except Exception as exc:
+            report.errors.append(
+                f"match upsert {match.id}: {exc}"
+            )
+            continue
         report.matches_written += 1
 
     for player_slug in _unique_preserving_order(player_slugs):
@@ -146,13 +169,17 @@ async def backfill_event(
         except ValueError as exc:
             report.errors.append(f"player parse {player_slug}: {exc}")
             continue
-        # If the player's current team was skipped (not in DB), null the FK.
+        # If the player's current team was not persisted, null the FK.
         if (
             player.current_team_id
-            and player.current_team_id in report.teams_skipped
+            and player.current_team_id in failed_teams
         ):
             player = player.model_copy(update={"current_team_id": None})
-        await repo.upsert_player(player)
+        try:
+            await repo.upsert_player(player)
+        except Exception as exc:
+            report.errors.append(f"player upsert {player_slug}: {exc}")
+            continue
         report.players_written += 1
 
     return report
