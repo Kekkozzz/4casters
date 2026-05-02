@@ -146,3 +146,37 @@ async def test_backfill_skips_team_missing_from_liquipedia() -> None:
     # The match referencing Ghost_Team must NOT be written (FK would fail).
     assert report.matches_written == 0
     assert report.event_written is True
+
+
+@pytest.mark.asyncio
+async def test_backfill_nulls_player_current_team_when_team_not_written() -> None:
+    event_wt = (
+        _load("event_rlcs_2026_major_1.wikitext")
+        + "\n{{TeamCard\n|team=Karmine Corp\n|p1=Seikoo\n}}\n"
+        + "\n{{Match\n"
+        "|opponent1={{TeamOpponent|kc|score=1}}\n"
+        "|opponent2={{TeamOpponent|Karmine Corp|score=2}}\n"
+        "}}"
+    )
+    client = FakeClient(
+        pages={
+            "RLCS_2026/Major_1": event_wt,
+            "Karmine_Corp": "{{Infobox team\n|name=Karmine Corp\n|region=Europe\n}}",
+            "Seikoo": (
+                "{{Infobox player\n|id=Seikoo\n|name=Maello Ernst\n"
+                "|nationality=France\n|team_link=Man_City_Esports\n}}"
+            ),
+        }
+    )
+    conn = FakeConn()
+    repo = LiquipediaRepo(conn)
+
+    report = await backfill_event("RLCS_2026/Major_1", client=client, repo=repo)
+
+    assert report.errors == []
+    player_upserts = [
+        args
+        for query, args in conn.statements
+        if query.strip().startswith("INSERT INTO players") and args[0] == "Seikoo"
+    ]
+    assert player_upserts[-1][3] is None

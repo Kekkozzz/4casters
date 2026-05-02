@@ -11,7 +11,7 @@ import pytest
 
 from scraper.db.repo import LiquipediaRepo
 from scraper.liquipedia.parsers.event import ParsedEvent
-from scraper.pipeline_stats import refresh_event_stats
+from scraper.pipeline_stats import SupabaseEventLookup, refresh_event_stats
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -50,6 +50,14 @@ class FakeConn:
 
     async def fetchrow(self, query: str, *args: Any) -> Any:
         return self.fetchrow_return
+
+
+class FakeLookupConn:
+    async def fetch(self, query: str, *args: Any) -> Any:
+        return [
+            {"name": "Alexis Bastin", "id": "juicy_(French_Player)"},
+            {"name": "Diego Vargas", "id": "diaz_(Brazilian_Player)"},
+        ]
 
 
 class FakeLookup:
@@ -91,6 +99,16 @@ def _group_payload() -> dict[str, Any]:
     return json.loads(
         (FIXTURES / "ballchasing_group_rlcs_major_1.json").read_text()
     )
+
+
+@pytest.mark.asyncio
+async def test_supabase_player_lookup_maps_parenthetical_player_slugs() -> None:
+    lookup = SupabaseEventLookup(FakeLookupConn())
+
+    mapping = await lookup.fetch_player_name_slug_map("E")
+
+    assert mapping["juicy"] == "juicy_(French_Player)"
+    assert mapping["diaz"] == "diaz_(Brazilian_Player)"
 
 
 @pytest.mark.asyncio

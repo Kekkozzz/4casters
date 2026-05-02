@@ -3,7 +3,7 @@ import type { SourceType } from "@/types/sheet";
 
 /**
  * Maps a SourceRef.srcType to a small icon used inside SourceChip.
- * Liquipedia and BLAST share the generic globe; YouTube and Twitter
+ * Liquipedia, Ballchasing, and BLAST share the generic globe; YouTube and Twitter
  * use the brand-adjacent placeholders (lucide 1.x dropped brand icons).
  */
 export function SourceIcon({ srcType }: { srcType: SourceType }) {

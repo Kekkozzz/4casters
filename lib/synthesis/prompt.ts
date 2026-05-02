@@ -14,10 +14,14 @@ Think of yourself as an editorial assistant, NOT an AI that invents content:
 3. Every selected_quotes entry must reference a candidate_quote by its
    candidate_id AND reproduce its text verbatim (whitespace-tolerant).
 4. Numbers (percentages, rates, scores, years) must appear somewhere in
-   the <data> block. Do not round in a way that changes the value.
+   the <data> block. You may round long decimals to 1-2 decimals, but do
+   not introduce new numbers.
 5. If a field is unavailable in the packet, just omit that angle rather
    than writing "no data" or speculating.
-6. Tone: analytical, editorial, concise. No marketing language, no
+6. Treat player_stats_30d as the provided event/player stat slice. Do
+   not describe it as "last 30 days" unless that exact time range is
+   present in the data.
+7. Tone: analytical, editorial, concise. No marketing language, no
    "powered by AI", no emoji.
 
 Deliver exactly the JSON shape defined by the schema.`;

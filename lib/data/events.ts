@@ -1,5 +1,5 @@
 import "server-only";
-import { asc, count, eq, gte, sql } from "drizzle-orm";
+import { count, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { events, matches } from "@/db/schema";
 
@@ -79,14 +79,9 @@ function formatDates(start: string | Date | null, end: string | Date | null): {
 }
 
 /**
- * List upcoming + recent events (end_date >= today - 14d), ordered by
- * start_date ascending. Includes per-event match count buckets.
+ * List ingested events, newest first. Includes per-event match count buckets.
  */
 export async function listEvents(): Promise<EventRow[]> {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 14);
-  const cutoffISO = cutoff.toISOString().slice(0, 10);
-
   const rows = await db
     .select({
       id: events.id,
@@ -101,11 +96,8 @@ export async function listEvents(): Promise<EventRow[]> {
     })
     .from(events)
     .leftJoin(matches, eq(matches.eventId, events.id))
-    .where(
-      sql`(${events.endDate} IS NULL OR ${events.endDate} >= ${cutoffISO})`,
-    )
     .groupBy(events.id)
-    .orderBy(asc(events.startDate));
+    .orderBy(desc(events.startDate));
 
   return rows.map((r): EventRow => {
     const { full, short } = formatDates(r.startDate, r.endDate);
@@ -162,6 +154,3 @@ export async function getEvent(slug: string): Promise<EventRow | null> {
     liquipediaUrl: r.liquipediaUrl,
   };
 }
-
-// Silence unused-imports when types are only referenced from JSDoc.
-export { gte };

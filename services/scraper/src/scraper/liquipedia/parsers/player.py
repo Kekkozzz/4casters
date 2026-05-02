@@ -39,9 +39,7 @@ def parse_player(
         raise PlayerParseError("no {{Infobox player}} template found in wikitext")
     fields = split_infobox_fields(body)
 
-    name = clean_value(fields.get("name", ""))
-    if not name:
-        raise PlayerParseError("Infobox player is missing required 'name' field")
+    name = clean_value(fields.get("name", "")) or clean_value(fields.get("id", "")) or slug
 
     nationality = clean_value(fields.get("nationality", "")) or None
 

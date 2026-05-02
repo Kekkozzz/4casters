@@ -100,7 +100,7 @@ Every file in `lib/data/` starts with `import "server-only"`. The DB client in `
 
 `services/scraper/src/scraper/pipeline.py` maintains a `failed_teams: set[str]` that captures every non-success path (404, network, parse, upsert). The match loop skips any match whose `team_a_id` or `team_b_id` is in that set — this is what prevents a missing team page from crashing a multi-hour backfill with a FK violation. Adding a new upsert path? Add the same try/except + `failed_X` pattern.
 
-`LiquipediaClient` retries transient 429s with exponential backoff (5s / 15s / 45s, honors `Retry-After`). Default min interval is 3s. Don't drop below that.
+`LiquipediaClient` retries transient 429s with exponential backoff (5s / 15s / 45s, honors `Retry-After`). Wikitext fetches use `action=query&prop=revisions` at the general 3s throttle; rendered HTML uses `action=parse` at the stricter 30s throttle. Don't drop below those.
 
 Match parser (`services/scraper/src/scraper/liquipedia/parsers/match.py`) walks every `{{Match}}` in the wikitext regardless of nesting (group stages use top-level, playoffs use `{{Bracket}}`, older formats use `{{MatchList}}`). Stage/format are inherited from the SMALLEST enclosing wrapper.
 

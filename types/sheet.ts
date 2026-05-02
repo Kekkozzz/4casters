@@ -14,7 +14,12 @@
  *   doesn't resolve (see Section 6.4).
  */
 
-export type SourceType = "liquipedia" | "blast" | "youtube" | "twitter";
+export type SourceType =
+  | "liquipedia"
+  | "ballchasing"
+  | "blast"
+  | "youtube"
+  | "twitter";
 
 export interface SourceRef {
   url: string;

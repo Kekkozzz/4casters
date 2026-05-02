@@ -72,6 +72,18 @@ def test_match_without_two_opponents_is_skipped() -> None:
     assert matches == []
 
 
+def test_upcoming_placeholder_with_empty_team_opponent_is_skipped() -> None:
+    wikitext = (
+        "{{Match\n"
+        "|opponent1={{TeamOpponent||score=}}\n"
+        "|opponent2={{TeamOpponent|Karmine Corp|score=}}\n"
+        "|date=TBD\n"
+        "}}"
+    )
+    matches = parse_matches(wikitext, event_slug="Stub_Event")
+    assert matches == []
+
+
 def test_invalid_date_is_skipped_not_raised() -> None:
     # Real RLCS pages embed {{Abbr/EST}} templates and other non-trivial
     # date representations in |date=. We must ingest the match anyway

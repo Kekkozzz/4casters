@@ -193,6 +193,16 @@ describe("validateNumbers", () => {
     const violations = validateNumbers(packet, output);
     expect(violations.some((v) => v.detail.includes("9999"))).toBe(true);
   });
+
+  it("accepts model text that rounds packet numbers", () => {
+    const output = baseSheet({
+      narrative_hooks: [
+        { title: "Rounded", body: "Shooting sits at 26.7%", backing: "player_stats_30d[0]" },
+        { title: "Rounded", body: "Saves are 1.67 per game", backing: "player_stats_30d[0]" },
+      ],
+    });
+    expect(validateNumbers(packet, output)).toEqual([]);
+  });
 });
 
 describe("validateSheet (composite)", () => {
@@ -230,6 +240,31 @@ describe("stripInvalidFields", () => {
     const cleaned = stripInvalidFields(output, violations);
     expect(cleaned.narrative_hooks).toHaveLength(1);
     expect(cleaned.narrative_hooks[0].title).toBe("good");
+  });
+
+  it("removes nested notables and talking points with number violations", () => {
+    const output = baseSheet({
+      talking_points: [
+        { trigger: "good", say: "use 1.0 gpg", backing: "player_stats_30d[0]" },
+        { trigger: "bad", say: "invented 9999 stat", backing: "match" },
+      ],
+      player_notables: [
+        {
+          player_id: "itachi",
+          notables: [
+            { text: "good 1.0 gpg", backing: "player_stats_30d[0]" },
+            { text: "bad 9999 stat", backing: "player_stats_30d[0]" },
+          ],
+        },
+      ],
+    });
+    const violations = validateNumbers(packet, output);
+    const cleaned = stripInvalidFields(output, violations);
+
+    expect(cleaned.talking_points).toHaveLength(1);
+    expect(cleaned.talking_points[0].trigger).toBe("good");
+    expect(cleaned.player_notables[0].notables).toHaveLength(1);
+    expect(cleaned.player_notables[0].notables[0].text).toBe("good 1.0 gpg");
   });
 });
 

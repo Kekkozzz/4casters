@@ -11,7 +11,7 @@ describe("SHEET mock", () => {
   it("every hook carries a source URL and a backing path", () => {
     for (const h of SHEET.hooks) {
       expect(h.source.url).toMatch(/^https?:/);
-      expect(h.source.srcType).toMatch(/^(liquipedia|blast|youtube|twitter)$/);
+      expect(h.source.srcType).toMatch(/^(liquipedia|ballchasing|blast|youtube|twitter)$/);
       expect(h.backing.length).toBeGreaterThan(0);
     }
   });

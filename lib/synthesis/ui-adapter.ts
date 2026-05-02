@@ -242,7 +242,7 @@ function backingToSource(
       const row = idx != null ? packet.player_stats_30d[idx] : undefined;
       const gid = row?.source_group_id;
       return gid
-        ? { url: `https://ballchasing.com/group/${gid}`, srcType: "blast" }
+        ? { url: `https://ballchasing.com/group/${gid}/players-stats`, srcType: "ballchasing" }
         : {
             url: `https://liquipedia.net/rocketleague/${packet.match.event_id}`,
             srcType: "liquipedia",

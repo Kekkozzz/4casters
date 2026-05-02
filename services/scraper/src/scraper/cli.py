@@ -48,6 +48,7 @@ async def _run_backfill(event_slug: str) -> int:
     async with pool_from_settings() as pool, LiquipediaClient(
         user_agent=settings.liquipedia_user_agent,
         min_interval_seconds=settings.liquipedia_min_interval_seconds,
+        parse_min_interval_seconds=settings.liquipedia_parse_min_interval_seconds,
     ) as client, pool.acquire() as conn:
         repo = LiquipediaRepo(conn)
         report = await backfill_event(
@@ -169,6 +170,7 @@ async def _run_quotes_liquipedia(slugs: list[str], all_players: bool) -> int:
     async with pool_from_settings() as pool, LiquipediaClient(
         user_agent=settings.liquipedia_user_agent,
         min_interval_seconds=settings.liquipedia_min_interval_seconds,
+        parse_min_interval_seconds=settings.liquipedia_parse_min_interval_seconds,
     ) as client, pool.acquire() as conn:
         repo = LiquipediaRepo(conn)
         if all_players:

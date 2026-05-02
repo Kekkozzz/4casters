@@ -8,6 +8,7 @@ and the operator can fix the mismatch (e.g., alias table) later.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from pydantic import BaseModel
@@ -61,6 +62,36 @@ def _get_number(d: Any, *path: str) -> float | None:
     return None
 
 
+def _lookup_slug(name: str, mapping: dict[str, str]) -> str | None:
+    direct = mapping.get(name)
+    if direct:
+        return direct
+    normalized_mapping = {_normalize_name(key): value for key, value in mapping.items()}
+    return normalized_mapping.get(_normalize_name(name))
+
+
+def _normalize_name(value: str) -> str:
+    normalized = value.lower().replace("ø", "o")
+    return re.sub(r"[^a-z0-9]+", "", normalized)
+
+
+def _player_save_percentage(cumulative: dict[str, Any], avg: dict[str, Any]) -> float | None:
+    explicit = _get_number(avg, "core", "save_percentage") or _get_number(
+        cumulative, "core", "save_percentage"
+    )
+    if explicit is not None:
+        return explicit
+
+    saves = _get_number(cumulative, "core", "saves")
+    goals_against = _get_number(cumulative, "core", "goals_against")
+    if saves is None or goals_against is None:
+        return None
+    shots_on_target_against = saves + goals_against
+    if shots_on_target_against <= 0:
+        return None
+    return (saves / shots_on_target_against) * 100
+
+
 def parse_group_stats(
     payload: dict[str, Any],
     *,
@@ -76,7 +107,7 @@ def parse_group_stats(
     unmapped_players: list[str] = []
     for p in payload.get("players", []) or []:
         name = p.get("name", "")
-        slug = player_name_to_slug.get(name)
+        slug = _lookup_slug(name, player_name_to_slug) if isinstance(name, str) else None
         if not slug:
             unmapped_players.append(name)
             continue
@@ -95,7 +126,7 @@ def parse_group_stats(
                 saves_per_game=_get_number(avg, "core", "saves"),
                 shots_per_game=_get_number(avg, "core", "shots"),
                 shooting_pct=_get_number(avg, "core", "shooting_percentage"),
-                save_pct=_get_number(avg, "core", "save_percentage"),
+                save_pct=_player_save_percentage(cumulative, avg),
                 demos_per_game=_get_number(avg, "demo", "inflicted"),
                 boost_per_min=_get_number(avg, "boost", "bpm"),
                 source_group_id=group_id,
@@ -106,7 +137,7 @@ def parse_group_stats(
     unmapped_teams: list[str] = []
     for t in payload.get("teams", []) or []:
         name = t.get("name", "")
-        slug = team_name_to_slug.get(name)
+        slug = _lookup_slug(name, team_name_to_slug) if isinstance(name, str) else None
         if not slug:
             unmapped_teams.append(name)
             continue
@@ -114,7 +145,13 @@ def parse_group_stats(
         games = cumulative.get("games")
         wins = cumulative.get("wins")
         losses = cumulative.get("losses")
-        if not isinstance(games, int) or not isinstance(wins, int) or not isinstance(losses, int):
+        if isinstance(games, int) and isinstance(wins, int) and losses is None:
+            losses = games - wins
+        if (
+            not isinstance(games, int)
+            or not isinstance(wins, int)
+            or not isinstance(losses, int)
+        ):
             continue
         team_stats.append(
             EventTeamStat(

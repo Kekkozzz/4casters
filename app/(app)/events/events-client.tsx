@@ -53,7 +53,7 @@ export function EventsClient({ events, loadError = false }: Props) {
   return (
     <>
       <PageHeader
-        title="Upcoming Events"
+        title="Events"
         kicker="Dashboard"
         right={
           <>
@@ -152,8 +152,7 @@ function EmptyState() {
       <div className="text-[14px] font-semibold mb-2">No events ingested yet</div>
       <p className="text-[12.5px] text-mute leading-relaxed max-w-lg mx-auto mb-4">
         The database is empty. Once an operator runs the Liquipedia scraper for
-        an event, upcoming matches will appear here and sheets become
-        generable on demand.
+        an event, matches will appear here and sheets become generable on demand.
       </p>
       <code className="mono text-[11.5px] text-mute2 bg-surf1 border border-line rounded-btn px-3 py-2 inline-block">
         uv run scraper backfill &lt;event_slug&gt;

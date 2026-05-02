@@ -171,7 +171,7 @@ export function validateNumbers(
     for (const n of extractNumbers(str)) {
       if (packetNumberStrings.has(n)) continue;
       const asNumber = Number(n);
-      if (Number.isFinite(asNumber) && packetNumberValues.has(asNumber)) {
+      if (Number.isFinite(asNumber) && matchesPacketNumber(asNumber, packetNumberValues)) {
         continue;
       }
       violations.push({
@@ -211,6 +211,16 @@ export function validateSheet(
   return { ok: violations.length === 0, violations };
 }
 
+function matchesPacketNumber(value: number, packetValues: Set<number>): boolean {
+  if (packetValues.has(value)) return true;
+  for (const packetValue of packetValues) {
+    if (Math.abs(packetValue - value) < 0.005) return true;
+    if (Number(packetValue.toFixed(2)) === value) return true;
+    if (Number(packetValue.toFixed(1)) === value) return true;
+  }
+  return false;
+}
+
 /**
  * Strip fields whose validator flagged them. Used as the second-chance
  * after a retry: we'd rather render a smaller, correct sheet than
@@ -220,7 +230,7 @@ export function stripInvalidFields(
   output: SheetOutput,
   violations: ValidationViolation[],
 ): SheetOutput {
-  const paths = new Set(violations.map((v) => v.path));
+  const paths = new Set(violations.map((v) => stripPathRoot(v.path)));
 
   const hooks = output.narrative_hooks.filter(
     (_, i) => !paths.has(`narrative_hooks[${i}]`),
@@ -244,4 +254,12 @@ export function stripInvalidFields(
     selected_quotes: quotes,
     player_notables: notables,
   };
+}
+
+function stripPathRoot(path: string): string {
+  return (
+    path.match(
+      /^(?:narrative_hooks\[\d+\]|talking_points\[\d+\]|selected_quotes\[\d+\]|player_notables\[\d+\]\.notables\[\d+\])/,
+    )?.[0] ?? path
+  );
 }

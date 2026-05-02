@@ -155,7 +155,7 @@ async function loadActiveRoster(
 ): Promise<Array<{ playerId: string; playerName: string }>> {
   const asOfDate = asOfISO ? new Date(asOfISO) : new Date();
   const rows = await client
-    .select({ playerId: rosterHistory.playerId, playerName: players.name })
+    .select({ playerId: rosterHistory.playerId })
     .from(rosterHistory)
     .innerJoin(players, eq(players.id, rosterHistory.playerId))
     .where(
@@ -165,7 +165,7 @@ async function loadActiveRoster(
         sql`(${rosterHistory.endDate} IS NULL OR ${rosterHistory.endDate} >= ${asOfDate.toISOString().slice(0, 10)})`,
       ),
     );
-  return rows;
+  return rows.map((r) => ({ playerId: r.playerId, playerName: r.playerId }));
 }
 
 async function loadH2H(
@@ -225,7 +225,7 @@ async function loadEventPlayerStats(
   const rows = await client
     .select({
       playerId: eventPlayerStats.playerId,
-      playerName: players.name,
+      playerName: eventPlayerStats.playerId,
       teamId: players.currentTeamId,
       gamesPlayed: eventPlayerStats.gamesPlayed,
       goalsPerGame: eventPlayerStats.goalsPerGame,
@@ -347,7 +347,7 @@ async function loadCandidateQuotes(
     .select({
       id: quotes.id,
       speakerId: quotes.speakerId,
-      speakerName: players.name,
+      speakerName: quotes.speakerId,
       text: quotes.text,
       sourceUrl: quotes.sourceUrl,
       sourceType: quotes.sourceType,

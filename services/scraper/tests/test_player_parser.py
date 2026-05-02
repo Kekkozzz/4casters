@@ -64,10 +64,10 @@ def test_missing_infobox_raises() -> None:
         )
 
 
-def test_missing_name_raises() -> None:
-    with pytest.raises(PlayerParseError, match="name"):
-        parse_player(
-            "{{Infobox player\n|id=x\n|nationality=France\n}}",
-            slug="x",
-            liquipedia_url="https://liquipedia.net/rocketleague/x",
-        )
+def test_missing_name_falls_back_to_id() -> None:
+    player = parse_player(
+        "{{Infobox player\n|id=x\n|nationality=France\n}}",
+        slug="x",
+        liquipedia_url="https://liquipedia.net/rocketleague/x",
+    )
+    assert player.name == "x"

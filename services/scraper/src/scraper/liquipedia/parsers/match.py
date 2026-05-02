@@ -15,6 +15,7 @@ from typing import Final
 from pydantic import BaseModel
 
 from ._common import clean_value, parse_template_params
+from .participants import alias_key
 
 _TZ_MAP: Final = {
     "UTC": UTC,
@@ -106,7 +107,9 @@ def _parse_date(raw: str) -> datetime | None:
     raise MatchParseError(f"could not parse match date {raw!r}")
 
 
-def _parse_team_opponent(body: str) -> tuple[str, int | None]:
+def _parse_team_opponent(
+    body: str, *, team_aliases: dict[str, str] | None = None
+) -> tuple[str, int | None]:
     parts = body.split("|")
     if not parts:
         raise MatchParseError("empty TeamOpponent body")
@@ -122,7 +125,10 @@ def _parse_team_opponent(body: str) -> tuple[str, int | None]:
             value = clean_value(value)
             if value.isdigit():
                 score = int(value)
-    return _team_name_to_slug(team_name), score
+    team_id = _team_name_to_slug(team_name)
+    if team_aliases:
+        team_id = team_aliases.get(alias_key(team_name), team_id)
+    return team_id, score
 
 
 def _split_match_fields(body: str) -> dict[str, str]:
@@ -167,7 +173,12 @@ def _split_match_fields(body: str) -> dict[str, str]:
     return fields
 
 
-def parse_matches(wikitext: str, *, event_slug: str) -> list[ParsedMatch]:
+def parse_matches(
+    wikitext: str,
+    *,
+    event_slug: str,
+    team_aliases: dict[str, str] | None = None,
+) -> list[ParsedMatch]:
     """Extract match rows from an event wikitext page.
 
     Real RLCS pages mix three match-bearing layouts — MatchList wrappers
@@ -194,8 +205,17 @@ def parse_matches(wikitext: str, *, event_slug: str) -> list[ParsedMatch]:
         team_opp2 = _iter_balanced_templates(opp2, "TeamOpponent")
         if not team_opp1 or not team_opp2:
             continue
-        team_a_id, score_a = _parse_team_opponent(team_opp1[0])
-        team_b_id, score_b = _parse_team_opponent(team_opp2[0])
+        try:
+            team_a_id, score_a = _parse_team_opponent(
+                team_opp1[0], team_aliases=team_aliases
+            )
+            team_b_id, score_b = _parse_team_opponent(
+                team_opp2[0], team_aliases=team_aliases
+            )
+        except MatchParseError:
+            # Upcoming event pages often contain bracket placeholders with
+            # empty/TBD TeamOpponent templates. They are not ingestible matches yet.
+            continue
         try:
             scheduled_at = _parse_date(fields.get("date", ""))
         except MatchParseError:

@@ -23,18 +23,31 @@ def ua() -> str:
     return "4casters-test/0.0 (https://github.com/Kekkozzz/4casters; test@4casters.app)"
 
 
+def _query_wikitext_payload(text: str = "y", title: str = "X") -> dict[str, object]:
+    return {
+        "query": {
+            "pages": [
+                {
+                    "pageid": 1,
+                    "title": title,
+                    "revisions": [
+                        {"slots": {"main": {"content": text}}},
+                    ],
+                }
+            ]
+        }
+    }
+
+
 @pytest.mark.asyncio
 @respx.mock
 async def test_get_wikitext_returns_content(ua: str) -> None:
     respx.get(API_URL).mock(
         return_value=httpx.Response(
             200,
-            json={
-                "parse": {
-                    "title": "RLCS_2026",
-                    "wikitext": {"*": "{{Infobox league|name=RLCS 2026}}"},
-                }
-            },
+            json=_query_wikitext_payload(
+                "{{Infobox league|name=RLCS 2026}}", title="RLCS_2026"
+            ),
         )
     )
     async with LiquipediaClient(user_agent=ua, min_interval_seconds=0.0) as client:
@@ -46,9 +59,7 @@ async def test_get_wikitext_returns_content(ua: str) -> None:
 @respx.mock
 async def test_sends_required_user_agent(ua: str) -> None:
     route = respx.get(API_URL).mock(
-        return_value=httpx.Response(
-            200, json={"parse": {"title": "X", "wikitext": {"*": "y"}}}
-        )
+        return_value=httpx.Response(200, json=_query_wikitext_payload())
     )
     async with LiquipediaClient(user_agent=ua, min_interval_seconds=0.0) as client:
         await client.get_wikitext("X")
@@ -56,6 +67,10 @@ async def test_sends_required_user_agent(ua: str) -> None:
     sent = route.calls.last.request
     assert sent.headers["user-agent"] == ua
     assert sent.headers["accept-encoding"].lower().find("gzip") >= 0
+    params = dict(sent.url.params)
+    assert params.get("action") == "query"
+    assert params.get("prop") == "revisions"
+    assert params.get("rvprop") == "content"
 
 
 @pytest.mark.asyncio
@@ -70,9 +85,7 @@ async def test_requires_user_agent_with_contact() -> None:
 @respx.mock
 async def test_rate_limit_spaces_requests(ua: str) -> None:
     respx.get(API_URL).mock(
-        return_value=httpx.Response(
-            200, json={"parse": {"title": "X", "wikitext": {"*": "y"}}}
-        )
+        return_value=httpx.Response(200, json=_query_wikitext_payload())
     )
     async with LiquipediaClient(user_agent=ua, min_interval_seconds=0.25) as client:
         t0 = time.perf_counter()
@@ -90,9 +103,10 @@ async def test_raises_not_found_when_page_missing(ua: str) -> None:
         return_value=httpx.Response(
             200,
             json={
-                "error": {
-                    "code": "missingtitle",
-                    "info": "The page you specified doesn't exist.",
+                "query": {
+                    "pages": [
+                        {"title": "Nonexistent_Page", "missing": True},
+                    ]
                 }
             },
         )
@@ -134,9 +148,7 @@ async def test_get_html_uses_prop_text(ua: str) -> None:
 @respx.mock
 async def test_concurrent_calls_still_serialize(ua: str) -> None:
     respx.get(API_URL).mock(
-        return_value=httpx.Response(
-            200, json={"parse": {"title": "X", "wikitext": {"*": "y"}}}
-        )
+        return_value=httpx.Response(200, json=_query_wikitext_payload())
     )
     async with LiquipediaClient(user_agent=ua, min_interval_seconds=0.15) as client:
         t0 = time.perf_counter()

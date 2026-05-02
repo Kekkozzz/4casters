@@ -40,7 +40,8 @@ The CLI reads env vars from the repo-root `.env` via pydantic-settings. `GEMINI_
 | --- | --- | --- |
 | `DATABASE_URL` | every command | — (Transaction pooler URI from Supabase) |
 | `LIQUIPEDIA_USER_AGENT` | backfill, quotes liquipedia | `4casters/0.3 (https://github.com/...)` |
-| `LIQUIPEDIA_MIN_INTERVAL_SECONDS` | backfill, quotes liquipedia | `3.0` (respects API terms + headroom for 429 retries) |
+| `LIQUIPEDIA_MIN_INTERVAL_SECONDS` | backfill, quotes liquipedia | `3.0` (general MediaWiki API throttle) |
+| `LIQUIPEDIA_PARSE_MIN_INTERVAL_SECONDS` | rendered HTML calls | `30.0` (`action=parse` throttle) |
 | `BALLCHASING_API_KEY` | stats refresh | — |
 | `BALLCHASING_MIN_INTERVAL_SECONDS` | stats refresh | `0.5` (2 req/s free tier) |
 | `GEMINI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY` | quotes embed | — |
@@ -117,7 +118,7 @@ Integration tests against a live Supabase DB + real Liquipedia / Ballchasing / Y
 ## Design principles
 
 - **Schema ownership**: Drizzle on the TS side defines tables. Python UPSERTs into them using asyncpg, never `CREATE TABLE`.
-- **Rate limiting**: Liquipedia requires a descriptive User-Agent and ≤ 1 req / 2s for anonymous clients. `LiquipediaClient` defaults to 3s + retries transient 429s with exponential backoff (5s / 15s / 45s, respects `Retry-After`).
+- **Rate limiting**: Liquipedia requires a descriptive User-Agent and <= 1 req / 2s for anonymous MediaWiki clients; expensive `action=parse` calls should be <= 1 req / 30s. `LiquipediaClient` fetches wikitext via `action=query&prop=revisions`, throttles general calls at 3s, throttles parse calls at 30s, and retries transient 429s with exponential backoff (5s / 15s / 45s, respects `Retry-After`).
 - **Idempotent**: every pipeline is `ON CONFLICT DO UPDATE` so reruns are cheap. Content-hash dedup on quotes means the same line surfaced from two sources lands once.
 - **Defensive orchestration**: a failed team (404, network, parse error, upsert error) is tracked in `failed_teams`; matches that reference it are skipped so a single bad row never kills a multi-hour backfill.
 - **Typed rows**: pydantic models at every parser boundary. The repo accepts Parsed* instances; callers can't pass raw dicts.

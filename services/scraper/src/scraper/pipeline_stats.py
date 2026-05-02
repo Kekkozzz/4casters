@@ -11,6 +11,7 @@ and the players/teams participating (so we can map name -> slug).
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -23,6 +24,7 @@ from scraper.ballchasing.discovery import find_group_for_event
 from scraper.ballchasing.parsers import parse_group_stats
 from scraper.db.repo import LiquipediaRepo
 from scraper.liquipedia.parsers.event import ParsedEvent
+from scraper.liquipedia.parsers.participants import alias_key
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +90,13 @@ class SupabaseEventLookup:
             """,
             slug,
         )
-        return {row["name"]: row["id"] for row in rows}
+        mapping: dict[str, str] = {}
+        for row in rows:
+            mapping[row["name"]] = row["id"]
+            mapping[row["id"]] = row["id"]
+            mapping.update(_player_slug_aliases(row["id"]))
+        mapping.update(_player_aliases(mapping))
+        return mapping
 
     async def fetch_team_name_slug_map(self, slug: str) -> dict[str, str]:
         rows = await self._conn.fetch(
@@ -100,7 +108,50 @@ class SupabaseEventLookup:
             """,
             slug,
         )
-        return {row["name"]: row["id"] for row in rows}
+        mapping: dict[str, str] = {}
+        team_ids: set[str] = set()
+        for row in rows:
+            mapping[row["name"]] = row["id"]
+            mapping[row["id"]] = row["id"]
+            team_ids.add(row["id"])
+        mapping.update(_team_aliases(team_ids))
+        return mapping
+
+
+def _player_aliases(mapping: dict[str, str]) -> dict[str, str]:
+    aliases = {
+        "Cata": "Catalysm",
+        "Aztr": "Aztrø",
+    }
+    return {
+        alias: target
+        for alias, target in aliases.items()
+        if any(alias_key(existing) == alias_key(target) for existing in mapping)
+    }
+
+
+def _player_slug_aliases(player_id: str) -> dict[str, str]:
+    aliases: dict[str, str] = {}
+    parenthetical = re.match(r"^(?P<base>.+)_\([^)]+\)$", player_id)
+    if parenthetical:
+        aliases[parenthetical.group("base").replace("_", " ")] = player_id
+    return aliases
+
+
+def _team_aliases(team_ids: set[str]) -> dict[str, str]:
+    aliases = {
+        "REBELLION": "Shopify_Rebellion",
+        "NRG ESPORTS": "NRG",
+        "NIP": "Ninjas_in_Pyjamas",
+        "SPACESTATION": "Spacestation_Gaming",
+        "GK ESPORTS": "Geekay_Esports",
+        "FALCONS": "Team_Falcons",
+    }
+    return {
+        alias: target
+        for alias, target in aliases.items()
+        if target in team_ids
+    }
 
 
 async def refresh_event_stats(

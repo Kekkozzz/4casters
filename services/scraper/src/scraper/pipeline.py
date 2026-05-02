@@ -23,8 +23,13 @@ from scraper.liquipedia.client import (
 )
 from scraper.liquipedia.parsers.event import parse_event
 from scraper.liquipedia.parsers.match import parse_matches
+from scraper.liquipedia.parsers.participants import (
+    alias_key,
+    parse_participants,
+    participant_alias_map,
+)
 from scraper.liquipedia.parsers.player import parse_player
-from scraper.liquipedia.parsers.team import parse_team
+from scraper.liquipedia.parsers.team import ParsedRosterEntry, parse_team
 
 logger = logging.getLogger(__name__)
 
@@ -89,12 +94,48 @@ async def backfill_event(
     await repo.upsert_event(event)
     report.event_written = True
 
-    parsed_matches = parse_matches(event_wikitext, event_slug=event_slug)
+    participants = parse_participants(
+        event_wikitext,
+        event_start_date=event.start_date,
+        source_url=_slug_url(event_slug),
+    )
+    team_aliases = participant_alias_map(participants)
+    parsed_matches = parse_matches(
+        event_wikitext, event_slug=event_slug, team_aliases=team_aliases
+    )
     team_slugs = _unique_preserving_order(
-        [m.team_a_id for m in parsed_matches] + [m.team_b_id for m in parsed_matches]
+        [participant.team.id for participant in participants]
+        + [m.team_a_id for m in parsed_matches]
+        + [m.team_b_id for m in parsed_matches]
     )
 
     player_slugs: list[str] = []
+    pending_roster_entries: list[ParsedRosterEntry] = []
+    written_teams: set[str] = set()
+    written_players: set[str] = set()
+    participant_team_ids = {participant.team.id for participant in participants}
+
+    for participant in participants:
+        try:
+            await repo.upsert_team(participant.team)
+        except Exception as exc:
+            report.errors.append(f"participant team upsert {participant.team.id}: {exc}")
+            continue
+        report.teams_written += 1
+        written_teams.add(participant.team.id)
+
+        for player in participant.players:
+            try:
+                await repo.upsert_player(player)
+            except Exception as exc:
+                report.errors.append(f"participant player upsert {player.id}: {exc}")
+                continue
+            if player.id not in written_players:
+                report.players_written += 1
+                written_players.add(player.id)
+            player_slugs.append(player.id)
+        pending_roster_entries.extend(participant.roster)
+
     # Track every team we failed to persist (404, network, parse, upsert).
     # Matches referencing any of these must be skipped to avoid FK errors.
     failed_teams: set[str] = set()
@@ -102,12 +143,14 @@ async def backfill_event(
         try:
             team_wikitext = await client.get_wikitext(team_slug)
         except LiquipediaNotFoundError:
-            report.teams_skipped.append(team_slug)
-            failed_teams.add(team_slug)
+            if team_slug not in participant_team_ids:
+                report.teams_skipped.append(team_slug)
+                failed_teams.add(team_slug)
             continue
         except LiquipediaError as exc:
             report.errors.append(f"team fetch {team_slug}: {exc}")
-            failed_teams.add(team_slug)
+            if team_slug not in participant_team_ids:
+                failed_teams.add(team_slug)
             continue
         try:
             parsed = parse_team(
@@ -117,24 +160,21 @@ async def backfill_event(
             )
         except ValueError as exc:
             report.errors.append(f"team parse {team_slug}: {exc}")
-            failed_teams.add(team_slug)
+            if team_slug not in participant_team_ids:
+                failed_teams.add(team_slug)
             continue
         try:
             await repo.upsert_team(parsed.team)
         except Exception as exc:
             report.errors.append(f"team upsert {team_slug}: {exc}")
-            failed_teams.add(team_slug)
+            if team_slug not in participant_team_ids:
+                failed_teams.add(team_slug)
             continue
-        report.teams_written += 1
+        if parsed.team.id not in written_teams:
+            report.teams_written += 1
+            written_teams.add(parsed.team.id)
+        pending_roster_entries.extend(parsed.roster)
         for entry in parsed.roster:
-            try:
-                written = await repo.upsert_roster_entry(entry)
-            except Exception as exc:
-                report.errors.append(
-                    f"roster upsert {entry.player_id}->{entry.team_id}: {exc}"
-                )
-                continue
-            report.roster_entries_written += written
             if entry.player_id:
                 player_slugs.append(entry.player_id)
 
@@ -170,9 +210,20 @@ async def backfill_event(
             report.errors.append(f"player parse {player_slug}: {exc}")
             continue
         # If the player's current team was not persisted, null the FK.
+        if player.current_team_id:
+            player = player.model_copy(
+                update={
+                    "current_team_id": team_aliases.get(
+                        alias_key(player.current_team_id), player.current_team_id
+                    )
+                }
+            )
         if (
             player.current_team_id
-            and player.current_team_id in failed_teams
+            and (
+                player.current_team_id in failed_teams
+                or player.current_team_id not in written_teams
+            )
         ):
             player = player.model_copy(update={"current_team_id": None})
         try:
@@ -180,6 +231,20 @@ async def backfill_event(
         except Exception as exc:
             report.errors.append(f"player upsert {player_slug}: {exc}")
             continue
-        report.players_written += 1
+        if player.id not in written_players:
+            report.players_written += 1
+            written_players.add(player.id)
+
+    for entry in pending_roster_entries:
+        if entry.player_id not in written_players or entry.team_id in failed_teams:
+            continue
+        try:
+            written = await repo.upsert_roster_entry(entry)
+        except Exception as exc:
+            report.errors.append(
+                f"roster upsert {entry.player_id}->{entry.team_id}: {exc}"
+            )
+            continue
+        report.roster_entries_written += written
 
     return report

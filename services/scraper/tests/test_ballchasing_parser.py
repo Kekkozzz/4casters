@@ -83,6 +83,94 @@ def test_skips_teams_missing_from_slug_map() -> None:
     assert result.unmapped_teams == ["Halcyon Esports"]
 
 
+def test_normalizes_ballchasing_player_and_team_names() -> None:
+    payload = {
+        "id": "normalization",
+        "players": [
+            {"name": "Atow", "cumulative": {"games": 1}, "game_average": {}},
+            {"name": "yANXNZ^^", "cumulative": {"games": 1}, "game_average": {}},
+        ],
+        "teams": [
+            {"name": "TEAM VITALITY", "cumulative": {"games": 1, "wins": 1, "losses": 0}},
+            {"name": "REBELLION", "cumulative": {"games": 1, "wins": 0, "losses": 1}},
+        ],
+    }
+
+    result = parse_group_stats(
+        payload,
+        event_slug="E",
+        player_name_to_slug={"Atow.": "Atow.", "yANXNZ": "yANXNZ"},
+        team_name_to_slug={
+            "Team Vitality": "Team_Vitality",
+            "REBELLION": "Shopify_Rebellion",
+        },
+    )
+
+    assert [stat.player_id for stat in result.player_stats] == ["Atow.", "yANXNZ"]
+    assert [stat.team_id for stat in result.team_stats] == [
+        "Team_Vitality",
+        "Shopify_Rebellion",
+    ]
+    assert result.unmapped_players == []
+    assert result.unmapped_teams == []
+
+
+def test_derives_team_losses_when_ballchasing_only_returns_wins() -> None:
+    payload = {
+        "id": "wins-only",
+        "players": [],
+        "teams": [
+            {
+                "name": "TSM",
+                "cumulative": {
+                    "games": 9,
+                    "wins": 3,
+                    "core": {"goals": 12, "goals_against": 20},
+                },
+            },
+        ],
+    }
+
+    result = parse_group_stats(
+        payload,
+        event_slug="E",
+        player_name_to_slug={},
+        team_name_to_slug={"TSM": "TSM"},
+    )
+
+    assert result.team_stats[0].wins == 3
+    assert result.team_stats[0].losses == 6
+
+
+def test_derives_player_save_percentage_from_saves_and_goals_against() -> None:
+    payload = {
+        "id": "save-pct",
+        "players": [
+            {
+                "name": "Daniel",
+                "cumulative": {
+                    "games": 5,
+                    "core": {
+                        "saves": 18,
+                        "goals_against": 12,
+                    },
+                },
+                "game_average": {"core": {"saves": 3.6}},
+            },
+        ],
+        "teams": [],
+    }
+
+    result = parse_group_stats(
+        payload,
+        event_slug="E",
+        player_name_to_slug={"Daniel": "Daniel"},
+        team_name_to_slug={},
+    )
+
+    assert result.player_stats[0].save_pct == pytest.approx(60.0)
+
+
 def test_missing_id_in_payload_raises() -> None:
     with pytest.raises(StatsParseError, match="group id"):
         parse_group_stats(
